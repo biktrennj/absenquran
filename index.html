@@ -1,1 +1,1169 @@
-# absenquran
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Qur'an Attend Pro - Sistem Absensi Modern</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: #0f172a;
+            color: #f8fafc;
+            overflow: hidden;
+        }
+        .glass-card {
+            background: rgba(30, 41, 59, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+        .emerald-gradient {
+            background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(16, 185, 129, 0.3); border-radius: 10px; }
+        
+        input, select {
+            background: rgba(15, 23, 42, 0.8) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            color: white !important;
+            transition: all 0.3s ease;
+        }
+        input:focus, select:focus {
+            border-color: #10b981 !important;
+            box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+            outline: none;
+        }
+        /* Date Picker Customization */
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+            cursor: pointer;
+            opacity: 0.6;
+        }
+        input[type="date"]::-webkit-calendar-picker-indicator:hover {
+            opacity: 1;
+        }
+
+        .btn-status {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .btn-status:active { transform: scale(0.9); }
+        
+        .modal-enter { animation: modalIn 0.3s ease-out forwards; }
+        @keyframes modalIn {
+            from { opacity: 0; transform: translateY(20px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .loader {
+            border: 3px solid rgba(16, 185, 129, 0.1);
+            border-top: 3px solid #10b981;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        #app-loader {
+            z-index: 9999;
+            background: #0f172a;
+        }
+
+        .filter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 1rem;
+        }
+
+        .sticky-col {
+            position: sticky;
+            left: 0;
+            background: #1e293b;
+            z-index: 10;
+        }
+        .rekap-table th, .rekap-table td {
+            min-width: 40px;
+            text-align: center;
+            border-right: 1px solid rgba(255,255,255,0.03);
+        }
+        .rekap-table .name-col {
+            min-width: 200px;
+            text-align: left;
+            padding-left: 1rem;
+        }
+
+        /* --- SIDEBAR & RESPONSIVE CSS (FIXED) --- */
+        .sidebar-item { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .sidebar-item.active {
+            background: linear-gradient(to right, rgba(16, 185, 129, 0.15), transparent);
+            border-left: 4px solid #10b981;
+            color: #10b981;
+        }
+
+        /* Desktop Only Logic */
+        @media (min-width: 1024px) {
+            #sidebar.collapsed { width: 5rem; }
+            #sidebar.collapsed .sidebar-text, #sidebar.collapsed .sidebar-section-title, #sidebar.collapsed .sidebar-footer-info, #sidebar.collapsed .logo-text { display: none !important; }
+            #sidebar.collapsed .sidebar-item { justify-content: center; padding-left: 0; padding-right: 0; border-left: 0; }
+            #sidebar.collapsed .sidebar-item.active { background: rgba(16, 185, 129, 0.15); border-radius: 0.75rem; margin: 0 0.5rem; border-left: none; }
+            #sidebar.collapsed .logo-container { margin-bottom: 2rem; justify-content: center; }
+        }
+
+        /* Mobile Logic */
+        @media (max-width: 1024px) {
+            #sidebar { width: 100% !important; height: auto; bottom: 0; top: auto; left: 0; border-right: none; border-top: 1px solid rgba(255, 255, 255, 0.1); padding: 0.5rem; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(16px); }
+            #sidebar nav { display: flex; flex-direction: row; overflow-x: auto; gap: 0.5rem; padding-bottom: 0; -ms-overflow-style: none; scrollbar-width: none; }
+            #sidebar nav::-webkit-scrollbar { display: none; }
+            .sidebar-section-title, #sidebar-header-desktop, #sidebar-footer { display: none; }
+            .sidebar-item { flex-direction: row; align-items: center; justify-content: center; border: none !important; background: transparent !important; color: #94a3b8; border-radius: 999px; padding: 0.75rem; min-width: 3.5rem; }
+            .sidebar-item .sidebar-text { display: none; font-size: 0.75rem; font-weight: 700; white-space: nowrap; margin-left: 0.5rem; }
+            .sidebar-item.active { background: rgba(16, 185, 129, 0.15) !important; color: #10b981; padding-left: 1.25rem; padding-right: 1.25rem; width: auto; flex-shrink: 0; }
+            .sidebar-item.active .sidebar-text { display: block; animation: fadeIn 0.3s ease; }
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateX(-5px); } to { opacity: 1; transform: translateX(0); } }
+    </style>
+</head>
+<body class="flex flex-col lg:flex-row h-screen w-full overflow-hidden">
+
+    <!-- Global App Loader -->
+    <div id="app-loader" class="fixed inset-0 flex flex-col items-center justify-center transition-opacity duration-500">
+        <div class="w-20 h-20 mb-6 relative">
+            <div class="absolute inset-0 border-4 border-emerald-500/20 rounded-full"></div>
+            <div class="absolute inset-0 border-4 border-emerald-500 rounded-full border-t-transparent animate-spin"></div>
+            <div class="absolute inset-0 flex items-center justify-center">
+                <i data-lucide="book-open" class="text-emerald-500 w-8 h-8"></i>
+            </div>
+        </div>
+        <h2 class="text-xl font-bold tracking-widest text-emerald-500 uppercase">Qur'an Attend</h2>
+        <p class="text-slate-400 mt-2 animate-pulse">Sinkronisasi Google Sheets...</p>
+    </div>
+
+    <!-- Sidebar Responsive -->
+    <aside id="sidebar" class="w-72 glass-card h-full flex flex-col z-50 border-r border-white/5 transition-all duration-300 fixed lg:relative">
+        <div id="sidebar-header-desktop" class="p-8 pb-4">
+            <div class="flex items-center gap-3 mb-6 logo-container relative">
+                <div class="w-12 h-12 emerald-gradient rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/20 shrink-0">
+                    <i data-lucide="book-open" class="text-white w-7 h-7"></i>
+                </div>
+                <div class="logo-text overflow-hidden transition-all duration-300">
+                    <h1 class="text-lg font-bold leading-none whitespace-nowrap">Qur'an Attend</h1>
+                    <span class="text-emerald-500 text-[10px] font-bold tracking-[0.2em] uppercase whitespace-nowrap">Premium System</span>
+                </div>
+                <button onclick="toggleSidebar()" class="absolute -right-12 top-2 bg-slate-800 p-1.5 rounded-lg border border-white/10 text-slate-400 hover:text-white hover:bg-slate-700 transition-all hidden lg:flex">
+                    <i id="toggle-icon" data-lucide="chevron-left" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar px-4 lg:py-2">
+            <nav class="space-y-1.5 flex flex-row lg:flex-col lg:space-y-1.5 h-full lg:h-auto items-center lg:items-stretch">
+                <button onclick="switchTab('dashboard')" class="sidebar-item w-full flex items-center gap-4 px-4 py-3 rounded-xl active" id="nav-dashboard">
+                    <i data-lucide="layout-dashboard" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Dashboard</span>
+                </button>
+                <button onclick="switchTab('santri')" class="sidebar-item w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all hover:bg-white/5" id="nav-santri">
+                    <i data-lucide="users" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Data Santri</span>
+                </button>
+                <button onclick="switchTab('absensi')" class="sidebar-item w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all hover:bg-white/5" id="nav-absensi">
+                    <i data-lucide="calendar-check" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Absensi</span>
+                </button>
+                <button onclick="switchTab('rekap')" class="sidebar-item w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all hover:bg-white/5" id="nav-rekap">
+                    <i data-lucide="bar-chart-3" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Rekapitulasi</span>
+                </button>
+                <div class="sidebar-section-title pt-6 pb-2 px-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest whitespace-nowrap">Manajemen Data</div>
+                <button onclick="switchTab('master-kelompok')" class="sidebar-item w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all hover:bg-white/5" id="nav-master-kelompok">
+                    <i data-lucide="layers" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Kelompok</span>
+                </button>
+                <button onclick="switchTab('master-domisili')" class="sidebar-item w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all hover:bg-white/5" id="nav-master-domisili">
+                    <i data-lucide="home" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Domisili</span>
+                </button>
+                <button onclick="switchTab('libur')" class="sidebar-item w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all hover:bg-white/5" id="nav-libur">
+                    <i data-lucide="calendar-off" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Jadwal Libur</span>
+                </button>
+                <button onclick="switchTab('pengaturan')" class="sidebar-item w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all hover:bg-white/5" id="nav-pengaturan">
+                    <i data-lucide="settings" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Pengaturan</span>
+                </button>
+            </nav>
+        </div>
+
+        <div id="sidebar-footer" class="mt-auto p-6">
+            <div id="connection-status" class="p-4 rounded-2xl bg-red-500/10 border border-red-500/20 transition-all">
+                <p class="sidebar-footer-info text-[10px] text-slate-400 font-bold uppercase mb-1 whitespace-nowrap">Status Sistem</p>
+                <div class="flex items-center gap-2 justify-center lg:justify-start">
+                    <div id="status-dot" class="w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0"></div>
+                    <span id="status-text" class="sidebar-footer-info text-sm font-semibold whitespace-nowrap">Offline</span>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col overflow-hidden relative mb-20 lg:mb-0">
+        <div class="absolute top-0 right-0 w-96 h-96 bg-emerald-500/10 blur-[100px] rounded-full -translate-y-1/2 translate-x-1/2"></div>
+        
+        <header class="p-8 flex justify-between items-center relative z-10 shrink-0">
+            <div>
+                <h2 id="tab-title" class="text-2xl lg:text-3xl font-bold tracking-tight">Dashboard Overview</h2>
+                <p id="tab-subtitle" class="text-slate-400 mt-1 text-sm lg:text-base">Laporan harian perkembangan santri Al-Qur'an.</p>
+            </div>
+            <div class="flex items-center gap-6">
+                <div class="text-right hidden sm:block">
+                    <p id="clock-date" class="font-bold text-slate-200"></p>
+                    <p id="clock-time" class="text-sm text-emerald-500 font-mono"></p>
+                </div>
+                <div class="w-10 h-10 lg:w-12 lg:h-12 rounded-2xl border border-white/10 p-1 glass-card">
+                    <img src="https://ui-avatars.com/api/?name=Admin+Al-Quran&background=10b981&color=fff" class="rounded-xl w-full h-full" alt="Profile">
+                </div>
+            </div>
+        </header>
+
+        <div id="main-viewport" class="flex-1 overflow-y-auto p-8 pt-0 custom-scrollbar relative z-10">
+            
+            <!-- Dashboard Section -->
+            <section id="tab-dashboard" class="space-y-6">
+                 <!-- Dashboard Cards -->
+                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="glass-card p-6 rounded-3xl group transition-all hover:-translate-y-1">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="p-3 bg-emerald-500/10 rounded-2xl text-emerald-500"><i data-lucide="users"></i></div>
+                            <span class="text-xs font-bold text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded-lg">Santri</span>
+                        </div>
+                        <p class="text-slate-400 text-sm font-medium">Total Santri</p>
+                        <h3 class="text-4xl font-bold mt-1" id="stat-total-santri">0</h3>
+                    </div>
+                    <div class="glass-card p-6 rounded-3xl group transition-all hover:-translate-y-1">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="p-3 bg-blue-500/10 rounded-2xl text-blue-500"><i data-lucide="check-circle-2"></i></div>
+                            <span class="text-xs font-bold text-blue-400 bg-blue-400/10 px-2 py-1 rounded-lg">Hadir</span>
+                        </div>
+                        <p class="text-slate-400 text-sm font-medium">Hadir Hari Ini</p>
+                        <h3 class="text-4xl font-bold mt-1" id="stat-kehadiran-today">0</h3>
+                    </div>
+                    <div class="glass-card p-6 rounded-3xl group transition-all hover:-translate-y-1">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="p-3 bg-amber-500/10 rounded-2xl text-amber-500"><i data-lucide="layers"></i></div>
+                        </div>
+                        <p class="text-slate-400 text-sm font-medium">Total Kelompok</p>
+                        <h3 class="text-4xl font-bold mt-1" id="stat-total-kelompok">0</h3>
+                    </div>
+                    <div class="glass-card p-6 rounded-3xl group transition-all hover:-translate-y-1">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="p-3 bg-purple-500/10 rounded-2xl text-purple-500"><i data-lucide="user-plus"></i></div>
+                        </div>
+                        <p class="text-slate-400 text-sm font-medium">Muallim Aktif</p>
+                        <h3 class="text-4xl font-bold mt-1" id="stat-total-muallim">0</h3>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                    <div class="xl:col-span-2 glass-card p-8 rounded-3xl">
+                        <h4 class="font-bold text-lg mb-6 text-slate-300">Tren Kehadiran Bulanan</h4>
+                        <div class="h-64"><canvas id="mainChart"></canvas></div>
+                    </div>
+                    <div class="glass-card p-8 rounded-3xl">
+                        <h4 class="font-bold text-lg mb-6 text-slate-300">Distribusi Wilayah</h4>
+                        <div class="h-64"><canvas id="donutChart"></canvas></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Data Santri Section -->
+            <section id="tab-santri" class="hidden space-y-4">
+                <div id="santri-alert-box" class="hidden mb-4 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="alert-circle" class="text-amber-500 w-6 h-6"></i>
+                        <div>
+                            <p class="text-amber-500 font-bold">Perhatian</p>
+                            <p class="text-xs text-slate-400"><span id="count-no-group" class="text-amber-400 font-bold">0</span> Santri belum memiliki kelompok belajar.</p>
+                        </div>
+                    </div>
+                    <button onclick="filterNoGroup()" class="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-500 text-xs font-bold rounded-lg transition-all">Lihat Data</button>
+                </div>
+
+                <div class="glass-card p-6 rounded-3xl space-y-4">
+                    <div class="flex justify-between items-center border-b border-white/5 pb-2">
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                            <i data-lucide="filter" class="w-3 h-3"></i> Saring Data Santri <span class="bg-emerald-500/20 text-emerald-500 px-2 py-0.5 rounded ml-2 normal-case" id="count-santri">0 Santri</span>
+                        </h4>
+                        <button onclick="openModalSantri()" class="emerald-gradient px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 hover:shadow-lg transition-all"><i data-lucide="plus" class="w-4 h-4"></i> Santri Baru</button>
+                    </div>
+                    
+                    <div class="filter-grid">
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] font-bold text-slate-500 uppercase ml-1">Cari Nama/NIUP</label>
+                            <input type="text" id="fs-search" oninput="filterSantriTable()" placeholder="..." class="w-full px-3 py-2 rounded-xl text-sm">
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] font-bold text-slate-500 uppercase ml-1">Wilayah</label>
+                            <select id="fs-wilayah" onchange="handleParentChildFilter('fs-wilayah', 'fs-daerah', 'fs-kamar', 'domisili'); filterSantriTable()" class="w-full px-3 py-2 rounded-xl text-sm"></select>
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] font-bold text-slate-500 uppercase ml-1">Daerah</label>
+                            <select id="fs-daerah" onchange="handleParentChildFilter('fs-daerah', null, 'fs-kamar', 'daerah'); filterSantriTable()" class="w-full px-3 py-2 rounded-xl text-sm"></select>
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] font-bold text-slate-500 uppercase ml-1">Kamar</label>
+                            <select id="fs-kamar" onchange="filterSantriTable()" class="w-full px-3 py-2 rounded-xl text-sm"></select>
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] font-bold text-slate-500 uppercase ml-1">Pendidikan</label>
+                            <select id="fs-pendidikan" onchange="filterSantriTable()" class="w-full px-3 py-2 rounded-xl text-sm"></select>
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] font-bold text-slate-500 uppercase ml-1">Majelis</label>
+                            <select id="fs-majelis" onchange="handleParentChildFilter('fs-majelis', 'fs-kelompok', null, 'majelis'); filterSantriTable()" class="w-full px-3 py-2 rounded-xl text-sm"></select>
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] font-bold text-slate-500 uppercase ml-1">Kelompok</label>
+                            <select id="fs-kelompok" onchange="filterSantriTable()" class="w-full px-3 py-2 rounded-xl text-sm"></select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-card rounded-3xl overflow-hidden">
+                    <div class="overflow-x-auto custom-scrollbar">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-white/5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                    <th class="px-6 py-4">NIUP</th>
+                                    <th class="px-6 py-4">Nama</th>
+                                    <th class="px-6 py-4">Kamar/Daerah</th>
+                                    <th class="px-6 py-4">Pendidikan</th>
+                                    <th class="px-6 py-4">Majelis/Kelompok</th>
+                                    <th class="px-6 py-4">Muallim</th>
+                                    <th class="px-6 py-4 text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="santri-table-body" class="divide-y divide-white/5 text-sm"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Absensi Section -->
+            <section id="tab-absensi" class="hidden space-y-4">
+                <div class="glass-card p-6 rounded-3xl space-y-4 border-l-4 border-emerald-500">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-2xl emerald-gradient flex items-center justify-center text-white shadow-xl">
+                                <span id="absen-today-date" class="font-bold">01</span>
+                            </div>
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <input type="date" id="absen-tgl-picker" onchange="loadAbsenList(); updateAbsenDateUI()" class="bg-transparent border-0 text-lg font-bold text-slate-200 focus:ring-0 cursor-pointer p-0 w-40">
+                                </div>
+                                <h3 id="absen-display-day" class="text-sm font-semibold text-emerald-500 mt-0.5">Hari ini</h3>
+                                <div id="libur-warning" class="hidden px-2 py-0.5 bg-amber-500/20 text-amber-500 rounded text-[10px] font-bold inline-flex items-center gap-1 mt-1">
+                                    <i data-lucide="alert-triangle" class="w-3 h-3"></i> Libur Wajib
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="text-xs text-slate-400 font-bold" id="count-absensi">0 Terdaftar</span>
+                            <button onclick="loadAbsenList()" class="w-full md:w-auto emerald-gradient px-8 py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 transition-all hover:scale-105 active:scale-95">
+                                <i data-lucide="refresh-cw" class="w-4 h-4"></i> Reload
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="filter-grid pt-2 border-t border-white/5">
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] font-bold text-slate-500 uppercase ml-1">Cari Nama/NIUP</label>
+                            <input type="text" id="fa-search" oninput="loadAbsenList()" placeholder="Cari santri..." class="w-full px-3 py-2 rounded-xl text-sm bg-slate-800/50">
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] font-bold text-slate-500 uppercase ml-1">Wilayah</label>
+                            <select id="fa-wilayah" onchange="handleParentChildFilter('fa-wilayah', 'fa-daerah', 'fa-kamar', 'domisili'); loadAbsenList()" class="w-full px-3 py-2 rounded-xl text-sm"></select>
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] font-bold text-slate-500 uppercase ml-1">Daerah</label>
+                            <select id="fa-daerah" onchange="handleParentChildFilter('fa-daerah', null, 'fa-kamar', 'daerah'); loadAbsenList()" class="w-full px-3 py-2 rounded-xl text-sm"></select>
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] font-bold text-slate-500 uppercase ml-1">Kamar</label>
+                            <select id="fa-kamar" onchange="loadAbsenList()" class="w-full px-3 py-2 rounded-xl text-sm"></select>
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] font-bold text-slate-500 uppercase ml-1">Majelis</label>
+                            <select id="fa-majelis" onchange="handleParentChildFilter('fa-majelis', 'fa-kelompok', null, 'majelis'); loadAbsenList()" class="w-full px-3 py-2 rounded-xl text-sm"></select>
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] font-bold text-slate-500 uppercase ml-1">Kelompok</label>
+                            <select id="fa-kelompok" onchange="loadAbsenList()" class="w-full px-3 py-2 rounded-xl text-sm"></select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-card rounded-3xl overflow-hidden">
+                    <div class="overflow-x-auto custom-scrollbar">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-white/5 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-white/10">
+                                    <th class="px-6 py-4">Santri</th>
+                                    <th class="px-6 py-4">Grup / Kamar</th>
+                                    <th class="px-6 py-4 text-center">Status Kehadiran</th>
+                                </tr>
+                            </thead>
+                            <tbody id="absen-container" class="divide-y divide-white/5"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Rekapitulasi Section -->
+            <section id="tab-rekap" class="hidden space-y-4">
+                <div class="glass-card p-6 rounded-3xl space-y-4">
+                    <div class="flex items-center justify-between border-b border-white/5 pb-2">
+                         <h4 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                            <i data-lucide="calendar-days" class="w-3 h-3 text-emerald-500"></i> Laporan Bulanan Detail <span id="count-rekap" class="ml-2 bg-slate-500/20 text-slate-400 px-2 rounded lowercase font-normal">0 baris</span>
+                         </h4>
+                         <div class="flex gap-2">
+                             <button onclick="window.print()" class="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-bold transition-all flex items-center gap-2"><i data-lucide="printer" class="w-4 h-4"></i> Print</button>
+                             <button onclick="fetchRekapData(true)" id="btn-rekap" class="emerald-gradient px-4 py-2 rounded-xl text-xs font-bold hover:shadow-lg transition-all flex items-center gap-2"><i data-lucide="refresh-cw" class="w-4 h-4"></i> Sinkron</button>
+                         </div>
+                    </div>
+
+                    <div class="filter-grid">
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] font-bold text-slate-500 uppercase ml-1">Cari Nama/NIUP</label>
+                            <input type="text" id="fr-search" oninput="fetchRekapData()" placeholder="Cari santri..." class="w-full px-3 py-2 rounded-xl text-sm bg-slate-800/50">
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] font-bold text-slate-500 uppercase ml-1">Bulan</label>
+                            <select id="rekap-bulan" onchange="fetchRekapData()" class="w-full px-3 py-2 rounded-xl text-sm">
+                                <option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option>
+                                <option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option>
+                                <option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option>
+                                <option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
+                            </select>
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] font-bold text-slate-500 uppercase ml-1">Tahun</label>
+                            <select id="rekap-tahun" onchange="fetchRekapData()" class="w-full px-3 py-2 rounded-xl text-sm"></select>
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] font-bold text-slate-500 uppercase ml-1">Wilayah</label>
+                            <select id="fr-wilayah" onchange="handleParentChildFilter('fr-wilayah', 'fr-daerah', 'fr-kamar', 'domisili'); fetchRekapData()" class="w-full px-3 py-2 rounded-xl text-sm"></select>
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] font-bold text-slate-500 uppercase ml-1">Daerah</label>
+                            <select id="fr-daerah" onchange="handleParentChildFilter('fr-daerah', null, 'fr-kamar', 'daerah'); fetchRekapData()" class="w-full px-3 py-2 rounded-xl text-sm"></select>
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] font-bold text-slate-500 uppercase ml-1">Kelompok</label>
+                            <select id="fr-kelompok" onchange="fetchRekapData()" class="w-full px-3 py-2 rounded-xl text-sm"></select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-card rounded-3xl overflow-hidden relative">
+                    <div class="overflow-x-auto custom-scrollbar">
+                        <table class="w-full text-left text-xs border-collapse rekap-table">
+                            <thead class="bg-white/5 border-b border-white/10 text-slate-400 font-bold uppercase">
+                                <tr id="rekap-header-row">
+                                    <th class="px-2 py-4 text-center">Aksi</th>
+                                    <th class="px-4 py-4 name-col sticky-col">Nama Santri</th>
+                                    <th class="px-2 py-4 text-emerald-500">H</th>
+                                    <th class="px-2 py-4 text-blue-400">S</th>
+                                    <th class="px-2 py-4 text-amber-500">I</th>
+                                    <th class="px-2 py-4 text-red-500">A</th>
+                                    <th class="px-4 py-4 text-emerald-400">%</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rekap-table-body" class="divide-y divide-white/5"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Menu Master Kelompok -->
+            <section id="tab-master-kelompok" class="hidden space-y-6">
+                 <div class="glass-card p-6 rounded-3xl mb-6">
+                    <div class="flex items-center justify-between border-b border-white/5 pb-2 mb-4">
+                        <h4 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                           <i data-lucide="filter" class="w-3 h-3"></i> Filter Kelompok <span id="count-mk" class="ml-2 bg-emerald-500/20 text-emerald-500 px-2 rounded normal-case font-bold">0 Kelompok</span>
+                        </h4>
+                   </div>
+                    <div class="filter-grid">
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] font-bold text-slate-500 uppercase ml-1">Wilayah</label>
+                            <select id="fmk-wilayah" onchange="handleParentChildFilter('fmk-wilayah', 'fmk-daerah', null, 'domisili'); filterMasterKelompok()" class="w-full px-3 py-2 rounded-xl text-sm"></select>
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] font-bold text-slate-500 uppercase ml-1">Daerah</label>
+                            <select id="fmk-daerah" onchange="filterMasterKelompok()" class="w-full px-3 py-2 rounded-xl text-sm"></select>
+                        </div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-1">
+                        <div class="glass-card p-6 rounded-3xl sticky top-0">
+                            <h4 class="font-bold mb-6 flex items-center gap-2 text-emerald-500"><i data-lucide="plus-circle" class="w-5 h-5"></i> Tambah Master Kelompok</h4>
+                            <form id="form-master-kelompok" class="space-y-4">
+                                <input type="text" id="mk-wilayah" placeholder="Wilayah" required class="w-full p-3 rounded-xl">
+                                <input type="text" id="mk-daerah" placeholder="Daerah" required class="w-full p-3 rounded-xl">
+                                <input type="text" id="mk-majelis" placeholder="Majelis" required class="w-full p-3 rounded-xl">
+                                <input type="text" id="mk-kelompok" placeholder="Nama Kelompok" required class="w-full p-3 rounded-xl">
+                                <input type="text" id="mk-niup-muallim" placeholder="NIUP Muallim" required class="w-full p-3 rounded-xl">
+                                <input type="text" id="mk-muallim" placeholder="Nama Muallim" required class="w-full p-3 rounded-xl">
+                                <button type="submit" id="btn-save-mk" class="w-full emerald-gradient py-3.5 rounded-xl font-bold mt-4 shadow-lg shadow-emerald-500/20 transition-all hover:opacity-90 active:scale-95">Simpan Data</button>
+                            </form>
+                        </div>
+                    </div>
+                    <div class="lg:col-span-2">
+                        <div class="glass-card rounded-3xl overflow-hidden">
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left text-sm">
+                                    <thead class="bg-white/5">
+                                        <tr class="font-bold text-slate-400">
+                                            <th class="px-6 py-4">Struktur</th>
+                                            <th class="px-6 py-4">Kelompok</th>
+                                            <th class="px-6 py-4">Muallim</th>
+                                            <th class="px-6 py-4 text-center">Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="mk-table-body" class="divide-y divide-white/5"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Master Domisili -->
+            <section id="tab-master-domisili" class="hidden space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-1">
+                        <div class="glass-card p-6 rounded-3xl sticky top-0">
+                            <h4 class="font-bold mb-6 flex items-center gap-2 text-blue-500"><i data-lucide="home" class="w-5 h-5"></i> Tambah Master Domisili</h4>
+                            <form id="form-master-domisili" class="space-y-4">
+                                <input type="text" id="md-wilayah" placeholder="Wilayah" required class="w-full p-3 rounded-xl">
+                                <input type="text" id="md-daerah" placeholder="Daerah" required class="w-full p-3 rounded-xl">
+                                <input type="text" id="md-kamar" placeholder="Nama Kamar" required class="w-full p-3 rounded-xl">
+                                <button type="submit" id="btn-save-md" class="w-full bg-blue-600 hover:bg-blue-500 py-3.5 rounded-xl font-bold mt-4 shadow-lg shadow-blue-500/20 transition-all hover:opacity-90 active:scale-95">Simpan Data</button>
+                            </form>
+                        </div>
+                    </div>
+                    <div class="lg:col-span-2">
+                        <div class="glass-card rounded-3xl overflow-hidden">
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left text-sm">
+                                    <thead class="bg-white/5">
+                                        <tr class="font-bold text-slate-400">
+                                            <th class="px-6 py-4">Wilayah</th>
+                                            <th class="px-6 py-4">Daerah</th>
+                                            <th class="px-6 py-4">Kamar</th>
+                                            <th class="px-6 py-4 text-center">Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="md-table-body" class="divide-y divide-white/5"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Libur -->
+            <section id="tab-libur" class="hidden space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="glass-card p-8 rounded-3xl">
+                        <h4 class="font-bold text-xl mb-6 flex items-center gap-3"><span class="w-2 h-8 emerald-gradient rounded-full"></span> Aturan Libur Wajib</h4>
+                        <div class="space-y-4">
+                            <div class="p-5 rounded-2xl bg-white/5 border border-white/5 flex justify-between items-center group hover:border-emerald-500/30 transition-all">
+                                <div><p class="font-bold text-lg">Hari Kamis</p><p class="text-sm text-slate-400">Libur rutin mingguan</p></div>
+                                <div class="px-4 py-1.5 rounded-full bg-emerald-500/10 text-emerald-500 text-xs font-bold border border-emerald-500/20">AKTIF</div>
+                            </div>
+                            <div class="p-5 rounded-2xl bg-white/5 border border-white/5 flex justify-between items-center group hover:border-emerald-500/30 transition-all">
+                                <div><p class="font-bold text-lg">Hari Senin</p><p class="text-sm text-slate-400">Libur rutin mingguan</p></div>
+                                <div class="px-4 py-1.5 rounded-full bg-emerald-500/10 text-emerald-500 text-xs font-bold border border-emerald-500/20">AKTIF</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="glass-card p-8 rounded-3xl">
+                        <h4 class="font-bold text-xl mb-6">Tambahkan Libur Khusus</h4>
+                        <div class="flex gap-4">
+                            <input type="date" id="input-libur-tgl" class="flex-1 p-3 rounded-xl">
+                            <button onclick="addLiburKhusus()" id="btn-libur" class="emerald-gradient px-8 rounded-xl font-bold transition-all hover:scale-105 active:scale-95">Simpan</button>
+                        </div>
+                        <div class="mt-8 space-y-2" id="list-libur-khusus"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Pengaturan -->
+            <section id="tab-pengaturan" class="hidden max-w-2xl mx-auto py-10">
+                <div class="glass-card p-8 rounded-[40px] text-center">
+                    <div class="w-20 h-20 bg-slate-800 rounded-3xl mx-auto mb-6 flex items-center justify-center text-slate-400"><i data-lucide="database" class="w-10 h-10"></i></div>
+                    <h3 class="text-2xl font-bold mb-2">Integrasi Data</h3>
+                    <p class="text-slate-400 mb-8">Masukkan URL Web App dari Google Apps Script Anda.</p>
+                    <div class="text-left space-y-6">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-widest">URL Apps Script</label>
+                            <input type="password" id="cfg-gas-url" class="w-full p-4 rounded-2xl font-mono text-sm">
+                        </div>
+                        <div class="flex gap-4 pt-4">
+                            <button onclick="saveSettings()" class="flex-1 emerald-gradient py-4 rounded-2xl font-bold shadow-xl shadow-emerald-500/20 transition-all hover:scale-[1.02] active:scale-95">Simpan Konfigurasi</button>
+                            <button onclick="testConnection()" class="px-6 bg-white/5 border border-white/10 rounded-2xl font-bold hover:bg-white/10 transition-all flex items-center justify-center" id="btn-test"><i data-lucide="zap" class="w-5 h-5"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Modal Santri -->
+    <div id="modal-santri" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"></div>
+        <div class="glass-card w-full max-w-4xl rounded-[40px] relative z-10 modal-enter overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="p-8 border-b border-white/5 flex justify-between items-center bg-white/2">
+                <div><h3 id="modal-title" class="text-2xl font-bold">Detail Data Santri</h3><p class="text-slate-400 text-sm">Lengkapi informasi biodata santri di bawah ini.</p></div>
+                <button onclick="closeModalSantri()" class="w-10 h-10 rounded-full hover:bg-white/10 flex items-center justify-center transition-all"><i data-lucide="x"></i></button>
+            </div>
+            <div class="p-8 overflow-y-auto custom-scrollbar flex-1">
+                <form id="form-santri" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <input type="hidden" name="id_row" id="form-id-row">
+                    <div><label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase">NIUP</label><input type="text" name="niup" required class="w-full p-3 rounded-xl"></div>
+                    <div><label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase">Nama Lengkap</label><input type="text" name="nama" required class="w-full p-3 rounded-xl"></div>
+                    <div><label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase">Wilayah</label><select name="wilayah" id="form-wilayah" required class="w-full p-3 rounded-xl"></select></div>
+                    <div><label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase">Daerah</label><select name="daerah" id="form-daerah" required class="w-full p-3 rounded-xl"></select></div>
+                    <div><label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase">Kamar</label><select name="kamar" id="form-kamar" required class="w-full p-3 rounded-xl"></select></div>
+                    <div><label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase">Pendidikan</label><input type="text" name="pendidikan" id="form-pendidikan" class="w-full p-3 rounded-xl"></div>
+                    <div><label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase">Jurusan</label><input type="text" name="jurusan" class="w-full p-3 rounded-xl"></div>
+                    <div><label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase">Kelas</label><input type="text" name="kelas" class="w-full p-3 rounded-xl"></div>
+                    <div><label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase">Majelis</label><select name="majelis" id="form-majelis" required class="w-full p-3 rounded-xl"></select></div>
+                    <div><label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase">Kelompok</label><select name="kelompok" id="form-kelompok" required class="w-full p-3 rounded-xl"></select></div>
+                    <div><label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase">Muallim</label><input type="text" name="muallim" id="form-muallim" readonly class="w-full p-3 rounded-xl opacity-60"></div>
+                    <input type="hidden" name="niup_muallim" id="form-niup-muallim">
+                </form>
+            </div>
+            <div class="p-8 border-t border-white/5 bg-white/2 flex justify-end gap-4">
+                <button onclick="closeModalSantri()" class="px-8 py-3 rounded-xl font-bold border border-white/10 hover:bg-white/5 transition-all">Batal</button>
+                <button onclick="saveSantri()" id="btn-save-santri" class="emerald-gradient px-12 py-3 rounded-xl font-bold shadow-xl shadow-emerald-500/20 transition-all hover:scale-105 active:scale-95">Simpan Santri</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Detail & Edit Absensi -->
+    <div id="modal-detail-absen" class="fixed inset-0 z-[110] hidden flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"></div>
+        <div class="glass-card w-full max-w-2xl rounded-[40px] relative z-10 modal-enter overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="p-8 border-b border-white/5 flex justify-between items-center bg-white/2">
+                <div><h3 class="text-xl font-bold">Detail Kehadiran</h3><p class="text-slate-400 text-sm" id="detail-santri-name">-</p></div>
+                <button onclick="document.getElementById('modal-detail-absen').classList.add('hidden')" class="w-10 h-10 rounded-full hover:bg-white/10 flex items-center justify-center"><i data-lucide="x"></i></button>
+            </div>
+            <div class="p-6 bg-white/5 border-b border-white/5 flex gap-4">
+                <select id="detail-bulan" onchange="renderDetailTable()" class="flex-1 p-2 rounded-xl text-sm"><option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option><option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option><option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option><option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option></select>
+                <select id="detail-tahun" onchange="renderDetailTable()" class="flex-1 p-2 rounded-xl text-sm"></select>
+            </div>
+            <div class="p-0 overflow-y-auto custom-scrollbar flex-1">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-white/5 text-slate-400 text-xs uppercase sticky top-0 z-10"><tr><th class="px-6 py-3">Tanggal</th><th class="px-6 py-3">Status</th><th class="px-6 py-3 text-right">Aksi</th></tr></thead>
+                    <tbody id="detail-table-body" class="divide-y divide-white/5"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DATA STATE & CONFIG ---
+        const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbwfwxSb2jWcLuZA02lc3G5svxOYsFc4nU3JGW8FZ7AlWeNcOFIN6n71phbYlTlCG-Sg/exec";
+        let appData = { santri: [], absensi: [], masterKelompok: [], masterDomisili: [], libur: [], settings: { gasUrl: localStorage.getItem('gas_url') || DEFAULT_GAS_URL } };
+        let currentDetailNiup = null;
+
+        // --- INIT ---
+        window.onload = async () => {
+            lucide.createIcons();
+            document.getElementById('cfg-gas-url').value = appData.settings.gasUrl;
+            document.getElementById('absen-tgl-picker').value = new Date().toISOString().split('T')[0];
+            initClock(); initCharts(); populateYears(); setupFormListeners();
+            await syncData();
+            const loader = document.getElementById('app-loader'); loader.style.opacity = '0'; setTimeout(() => loader.style.display = 'none', 500);
+        };
+
+        // --- TOGGLE SIDEBAR ---
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const icon = document.getElementById('toggle-icon');
+            sidebar.classList.toggle('collapsed');
+            icon.setAttribute('data-lucide', sidebar.classList.contains('collapsed') ? 'chevron-right' : 'chevron-left');
+            lucide.createIcons();
+        }
+
+        async function syncData() {
+            if (!appData.settings.gasUrl) return;
+            try {
+                const response = await fetch(`${appData.settings.gasUrl}?action=getAllData`);
+                const result = await response.json();
+                appData.santri = result.santri || [];
+                appData.masterKelompok = result.masterKelompok || [];
+                appData.masterDomisili = result.masterDomisili || [];
+                appData.libur = result.libur || [];
+                appData.absensi = result.absensi || [];
+                renderAll(); updateConnectionUI(true);
+            } catch (error) { console.error("Sync Error:", error); updateConnectionUI(false); }
+        }
+
+        function updateConnectionUI(isConnected) {
+            const dot = document.getElementById('status-dot');
+            const txt = document.getElementById('status-text');
+            if (isConnected) {
+                dot.className = "w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_#10b981] shrink-0";
+                txt.textContent = "Live Connected";
+                txt.className = "sidebar-footer-info text-sm font-semibold text-emerald-500 whitespace-nowrap";
+            } else {
+                dot.className = "w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0";
+                txt.textContent = "Offline";
+                txt.className = "sidebar-footer-info text-sm font-semibold text-red-500 whitespace-nowrap";
+            }
+        }
+
+        function initClock() {
+            const update = () => {
+                const now = new Date();
+                const days = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+                const months = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+                const cd = document.getElementById('clock-date');
+                const ct = document.getElementById('clock-time');
+                if(cd) cd.textContent = `${days[now.getDay()]}, ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+                if(ct) ct.textContent = now.toLocaleTimeString('id-ID', { hour12: false });
+                updateAbsenDateUI();
+            };
+            update(); setInterval(update, 1000);
+        }
+
+        function updateAbsenDateUI() {
+            const picker = document.getElementById('absen-tgl-picker');
+            const dateVal = picker ? new Date(picker.value) : new Date();
+            const days = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+            const months = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+            
+            const ad = document.getElementById('absen-today-date');
+            const add = document.getElementById('absen-display-day');
+            
+            if(ad) ad.textContent = String(dateVal.getDate()).padStart(2, '0');
+            if(add) add.textContent = `${days[dateVal.getDay()]}, ${dateVal.getDate()} ${months[dateVal.getMonth()]}`;
+            const lw = document.getElementById('libur-warning');
+            if(lw) lw.classList.toggle('hidden', !(dateVal.getDay() === 1 || dateVal.getDay() === 4));
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('section').forEach(s => s.classList.add('hidden'));
+            document.getElementById('tab-' + tabId).classList.remove('hidden');
+            document.querySelectorAll('.sidebar-item').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('nav-' + tabId).classList.add('active');
+            
+            const titles = { 'dashboard': ['Dashboard Overview', 'Laporan harian perkembangan santri Al-Qur\'an.'], 'santri': ['Database Santri', 'Manajemen data profil dan akademik santri.'], 'absensi': ['Pencatatan Absensi', 'Lakukan absensi harian santri sesuai kelompok.'], 'rekap': ['Rekapitulasi Data', 'Lihat laporan kehadiran per bulan dan per santri.'], 'master-kelompok': ['Struktur Kelompok', 'Atur pembagian Majelis, Kelompok dan Muallim.'], 'master-domisili': ['Manajemen Domisili', 'Atur pembagian Wilayah, Daerah dan Kamar.'], 'libur': ['Jadwal Libur', 'Tentukan hari libur rutin dan hari libur khusus.'], 'pengaturan': ['Sistem & Integrasi', 'Hubungkan aplikasi dengan database Google Sheets.'] };
+            document.getElementById('tab-title').textContent = titles[tabId][0];
+            document.getElementById('tab-subtitle').textContent = titles[tabId][1];
+            lucide.createIcons();
+            
+            if(['santri', 'absensi', 'rekap', 'master-kelompok'].includes(tabId)) {
+                updateFilterSelectors();
+                if(tabId === 'absensi') loadAbsenList();
+                if(tabId === 'rekap') fetchRekapData();
+                if(tabId === 'master-kelompok') filterMasterKelompok();
+            }
+        }
+
+        function parseSheetDate(dateInput) {
+            if (!dateInput) return null;
+            if (dateInput instanceof Date) return dateInput;
+            const str = String(dateInput).trim();
+            if (str.includes('T') && str.includes('Z')) { const d = new Date(str); if (!isNaN(d.getTime())) return d; }
+            const parts = str.split(/[/-\s:]/);
+            if (parts.length >= 3) {
+                let day, month, year;
+                if (parts[0].length === 4) { year = parseInt(parts[0]); month = parseInt(parts[1]) - 1; day = parseInt(parts[2]); } 
+                else { day = parseInt(parts[0]); month = parseInt(parts[1]) - 1; year = parseInt(parts[2]); }
+                if (year < 100) year += 2000;
+                const d = new Date(year, month, day); if (!isNaN(d.getTime())) return d;
+            }
+            const dFinal = new Date(str); return !isNaN(dFinal.getTime()) ? dFinal : null;
+        }
+
+        // --- FILTER & RENDER ---
+        function updateFilterSelectors() {
+            const prefixes = ['fs', 'fa', 'fr', 'fmk'];
+            const wilayahs = [...new Set(appData.masterDomisili.map(d => d.wilayah))];
+            const majelisList = [...new Set(appData.masterKelompok.map(k => k.majelis))];
+            const pendidikans = [...new Set(appData.santri.map(s => s.pendidikan).filter(p => p))];
+
+            prefixes.forEach(p => {
+                const wSel = document.getElementById(`${p}-wilayah`); const mSel = document.getElementById(`${p}-majelis`); const pSel = document.getElementById(`${p}-pendidikan`);
+                if(wSel && wSel.innerHTML === "") wSel.innerHTML = `<option value="">Semua Wilayah</option>` + wilayahs.map(w => `<option value="${w}">${w}</option>`).join('');
+                if(mSel && mSel.innerHTML === "") mSel.innerHTML = `<option value="">Semua Majelis</option>` + majelisList.map(m => `<option value="${m}">${m}</option>`).join('');
+                if(pSel && pSel.innerHTML === "") pSel.innerHTML = `<option value="">Semua Pendidikan</option>` + pendidikans.map(x => `<option value="${x}">${x}</option>`).join('');
+            });
+        }
+
+        function handleParentChildFilter(triggerId, childId, grandchildId, type) {
+            const triggerVal = document.getElementById(triggerId).value;
+            const childSel = childId ? document.getElementById(childId) : null;
+            const gChildSel = grandchildId ? document.getElementById(grandchildId) : null;
+
+            if (type === 'domisili') {
+                const daerahs = triggerVal ? [...new Set(appData.masterDomisili.filter(d => d.wilayah === triggerVal).map(d => d.daerah))] : [];
+                if(childSel) childSel.innerHTML = `<option value="">Semua Daerah</option>` + daerahs.map(d => `<option value="${d}">${d}</option>`).join('');
+                if(gChildSel) gChildSel.innerHTML = `<option value="">Pilih Daerah dahulu</option>`;
+            } else if (type === 'daerah') {
+                const triggerWilayah = document.getElementById(triggerId.replace('-daerah', '-wilayah')).value;
+                const kamars = triggerVal ? [...new Set(appData.masterDomisili.filter(d => d.wilayah === triggerWilayah && d.daerah === triggerVal).map(d => d.kamar))] : [];
+                if(gChildSel) gChildSel.innerHTML = `<option value="">Semua Kamar</option>` + kamars.map(k => `<option value="${k}">${k}</option>`).join('');
+            } else if (type === 'majelis') {
+                const kelompok = triggerVal ? appData.masterKelompok.filter(k => k.majelis === triggerVal) : [];
+                if(childSel) childSel.innerHTML = `<option value="">Semua Kelompok</option>` + kelompok.map(k => `<option value="${k.kelompok}">${k.kelompok}</option>`).join('');
+            }
+        }
+
+        function renderAll() { renderSantri(); renderMasterKelompok(); renderMasterDomisili(); renderLibur(); updateDashboard(); updateFormSelectors(); updateFilterSelectors(); }
+
+        // --- SANTRI ---
+        function renderSantri(data = appData.santri) {
+            const noGroupCount = appData.santri.filter(s => !s.kelompok || s.kelompok === "").length;
+            const alertBox = document.getElementById('santri-alert-box');
+            if(noGroupCount > 0) { alertBox.classList.remove('hidden'); document.getElementById('count-no-group').textContent = noGroupCount; } else { alertBox.classList.add('hidden'); }
+
+            document.getElementById('santri-table-body').innerHTML = data.map(s => `
+                <tr class="hover:bg-white/5 transition-all group border-b border-white/5">
+                    <td class="px-6 py-4 font-mono text-xs text-emerald-500">${s.niup}</td>
+                    <td class="px-6 py-4 font-bold text-slate-200">${s.nama}</td>
+                    <td class="px-6 py-4"><span class="block">${s.kamar}</span><span class="text-[10px] text-slate-500">${s.daerah} - ${s.wilayah}</span></td>
+                    <td class="px-6 py-4 text-xs">${s.pendidikan} (${s.kelas})</td>
+                    <td class="px-6 py-4"><span class="block font-medium ${!s.majelis ? 'text-red-400' : ''}">${s.majelis || 'Belum Ada'}</span><span class="text-[10px] text-slate-500">${s.kelompok || 'Belum Ada'}</span></td>
+                    <td class="px-6 py-4 text-xs text-emerald-400 font-semibold">${s.muallim || '-'}</td>
+                    <td class="px-6 py-4 text-center"><button onclick="editSantri('${s.niup}')" class="p-2 hover:bg-emerald-500/20 rounded-lg text-emerald-500"><i data-lucide="edit-3" class="w-4 h-4"></i></button></td>
+                </tr>
+            `).join('');
+            document.getElementById('count-santri').textContent = `${data.length} Santri`;
+            lucide.createIcons();
+        }
+        function filterNoGroup() { document.getElementById('fs-search').value = ""; filterSantriTable(appData.santri.filter(s => !s.kelompok || s.kelompok === "")); }
+        function filterSantriTable(dataSet = null) {
+            const query = document.getElementById('fs-search').value.toLowerCase();
+            const wilayah = document.getElementById('fs-wilayah').value; const daerah = document.getElementById('fs-daerah').value; const kamar = document.getElementById('fs-kamar').value;
+            const pendidikan = document.getElementById('fs-pendidikan').value; const majelis = document.getElementById('fs-majelis').value; const kelompok = document.getElementById('fs-kelompok').value;
+            
+            const source = dataSet || appData.santri;
+            const filtered = source.filter(s => {
+                return (!query || (s.nama.toLowerCase().includes(query) || String(s.niup).toLowerCase().includes(query))) &&
+                       (!wilayah || s.wilayah === wilayah) && (!daerah || s.daerah === daerah) && (!kamar || s.kamar === kamar) &&
+                       (!pendidikan || s.pendidikan === pendidikan) && (!majelis || s.majelis === majelis) && (!kelompok || s.kelompok === kelompok);
+            });
+            renderSantri(filtered);
+        }
+
+        // --- ABSENSI (UPDATED) ---
+        function loadAbsenList() {
+            const query = document.getElementById('fa-search').value.toLowerCase(); // Search Input
+            const picker = document.getElementById('absen-tgl-picker');
+            const selectedDateStr = picker ? picker.value : new Date().toISOString().split('T')[0];
+            const selectedDate = new Date(selectedDateStr);
+
+            // Get existing attendance for selected date
+            const existingAbsenceMap = {};
+            appData.absensi.forEach(a => {
+                const d = parseSheetDate(a.timestamp || a.Tanggal);
+                if (d && d.toDateString() === selectedDate.toDateString()) {
+                    existingAbsenceMap[String(a.niup).trim()] = a.keterangan;
+                }
+            });
+
+            // Filter students
+            const wilayah = document.getElementById('fa-wilayah').value; const daerah = document.getElementById('fa-daerah').value;
+            const kamar = document.getElementById('fa-kamar').value; const pendidikan = document.getElementById('fa-pendidikan').value;
+            const majelis = document.getElementById('fa-majelis').value; const kelompok = document.getElementById('fa-kelompok').value;
+            
+            const list = appData.santri.filter(s => {
+                const matchesSearch = !query || (s.nama.toLowerCase().includes(query) || String(s.niup).toLowerCase().includes(query));
+                return matchesSearch && (!wilayah || s.wilayah === wilayah) && (!daerah || s.daerah === daerah) && (!kamar || s.kamar === kamar) &&
+                       (!pendidikan || s.pendidikan === pendidikan) && (!majelis || s.majelis === majelis) && (!kelompok || s.kelompok === kelompok);
+            });
+
+            const container = document.getElementById('absen-container');
+            document.getElementById('count-absensi').textContent = `${list.length} Terdaftar`;
+            
+            if(list.length === 0) { container.innerHTML = `<tr><td colspan="3" class="py-20 text-center opacity-40">Tidak ditemukan santri</td></tr>`; return; }
+
+            container.innerHTML = list.map(s => {
+                const existingStatus = existingAbsenceMap[String(s.niup).trim()];
+                
+                let actionHtml = '';
+                if (existingStatus) {
+                    const colorClass = existingStatus === 'H' ? 'text-emerald-500' : existingStatus === 'A' ? 'text-red-500' : 'text-blue-400';
+                    actionHtml = `<div class="px-4 py-2 bg-white/5 rounded-xl border border-white/5 text-center font-bold ${colorClass}">Sudah Absen: ${existingStatus}</div>`;
+                } else {
+                    actionHtml = `<div class="flex items-center justify-center gap-2">
+                            ${['H','S','I','A'].map(st => `
+                                <button onclick="submitAbsen('${s.niup}', '${st}', this)" class="btn-status w-10 h-10 rounded-xl bg-white/5 border border-white/5 hover:border-emerald-500 flex items-center justify-center transition-all">
+                                    <span class="font-bold text-sm ${st === 'H' ? 'text-emerald-500' : st === 'A' ? 'text-red-500' : 'text-blue-400'}">${st}</span>
+                                </button>
+                            `).join('')}
+                        </div>`;
+                }
+
+                return `<tr class="hover:bg-white/5 border-b border-white/5 group ${existingStatus ? 'opacity-60' : ''}">
+                    <td class="px-6 py-4"><div class="font-bold text-slate-200">${s.nama}</div><div class="text-[10px] font-mono text-emerald-500">${s.niup}</div></td>
+                    <td class="px-6 py-4"><div class="text-xs font-semibold text-slate-400 uppercase tracking-wider">${s.majelis} / ${s.kelompok}</div><div class="text-[10px] text-slate-500">${s.kamar} - ${s.daerah}</div></td>
+                    <td class="px-6 py-4">${actionHtml}</td>
+                </tr>`;
+            }).join('');
+            lucide.createIcons();
+        }
+
+        async function submitAbsen(niup, status, btnElement) {
+            const s = appData.santri.find(x => String(x.niup) === String(niup));
+            const picker = document.getElementById('absen-tgl-picker');
+            const dateVal = picker ? new Date(picker.value) : new Date();
+            const now = new Date(); dateVal.setHours(now.getHours(), now.getMinutes()); // Keep time for sorting but correct date
+
+            const payloadData = {
+                timestamp: dateVal.toISOString(), tanggal: dateVal.toLocaleDateString('id-ID'),
+                niup: s.niup, nama: s.nama, kamar: s.kamar, daerah: s.daerah, wilayah: s.wilayah,
+                pendidikan: s.pendidikan, jurusan: s.jurusan || '', kelas: s.kelas,
+                majelis: s.majelis, kelompok: s.kelompok, niup_muallim: s.niup_muallim, muallim: s.muallim, keterangan: status
+            };
+            
+            try {
+                // Optimistic Update
+                appData.absensi.push(payloadData);
+                // Update Row UI safely
+                if(btnElement) {
+                    const td = btnElement.parentElement.parentElement;
+                    const colorClass = status === 'H' ? 'text-emerald-500' : status === 'A' ? 'text-red-500' : 'text-blue-400';
+                    td.innerHTML = `<div class="px-4 py-2 bg-white/5 rounded-xl border border-white/5 text-center font-bold ${colorClass}">Sudah Absen: ${status}</div>`;
+                    if(td.parentElement) td.parentElement.classList.add('opacity-60');
+                }
+
+                await fetch(appData.settings.gasUrl, { method: 'POST', body: JSON.stringify({ action: 'saveAbsen', data: payloadData }) });
+                showNotification(`Absen ${s.nama} (${status}) dicatat`, "success");
+            } catch (e) { showNotification("Gagal mencatat absen", "error"); loadAbsenList(); } // Revert if fail
+        }
+
+        // --- REKAPITULASI (UPDATED) ---
+        async function fetchRekapData(forceSync = false) {
+            const query = document.getElementById('fr-search').value.toLowerCase(); // Search Input
+            const bln = parseInt(document.getElementById('rekap-bulan').value);
+            const thn = parseInt(document.getElementById('rekap-tahun').value);
+            const wilayah = document.getElementById('fr-wilayah').value; const daerah = document.getElementById('fr-daerah').value; const kamar = document.getElementById('fr-kamar').value;
+            const pendidikan = document.getElementById('fr-pendidikan').value; const majelis = document.getElementById('fr-majelis').value; const kelompok = document.getElementById('fr-kelompok').value;
+
+            const btn = document.getElementById('btn-rekap'); const originalHTML = btn.innerHTML; btn.innerHTML = `<div class="loader"></div>`;
+            try {
+                if(forceSync) { await syncData(); showNotification("Database berhasil diperbarui", "success"); }
+                const headerRow = document.getElementById('rekap-header-row');
+                const datesInMonth = new Date(thn, bln, 0).getDate();
+                let dateHeadersHTML = `<th class="px-2 py-4 text-center">Aksi</th><th class="px-4 py-4 name-col sticky-col">Nama Santri</th>`;
+                // Only show Summary columns
+                dateHeadersHTML += `<th class="px-2 py-4 text-emerald-500">H</th><th class="px-2 py-4 text-blue-400">S</th><th class="px-2 py-4 text-amber-500">I</th><th class="px-2 py-4 text-red-500">A</th><th class="px-4 py-4 text-emerald-400">%</th>`;
+                headerRow.innerHTML = dateHeadersHTML;
+
+                const filteredSantri = appData.santri.filter(s => {
+                    const matchesSearch = !query || (s.nama.toLowerCase().includes(query) || String(s.niup).toLowerCase().includes(query));
+                    return matchesSearch && (!wilayah || s.wilayah === wilayah) && (!daerah || s.daerah === daerah) && (!kamar || s.kamar === kamar) &&
+                           (!pendidikan || s.pendidikan === pendidikan) && (!majelis || s.majelis === majelis) && (!kelompok || s.kelompok === kelompok);
+                });
+
+                document.getElementById('count-rekap').textContent = `${filteredSantri.length} baris`;
+                document.getElementById('rekap-table-body').innerHTML = filteredSantri.map(s => {
+                    let summary = { H: 0, S: 0, I: 0, A: 0 };
+                    const targetNiup = String(s.niup).trim();
+                    const sAbsen = appData.absensi.filter(a => {
+                        const d = parseSheetDate(a.timestamp || a.Tanggal); 
+                        return d && String(a.niup).trim() === targetNiup && (d.getMonth() + 1) === bln && d.getFullYear() === thn;
+                    });
+                    sAbsen.forEach(a => {
+                        const ket = String(a.keterangan || a.KETERANGAN || '').trim().toUpperCase();
+                        if (summary[ket] !== undefined) summary[ket]++;
+                    });
+                    const totalEntries = summary.H + summary.S + summary.I + summary.A;
+                    const percent = totalEntries > 0 ? Math.round((summary.H / totalEntries) * 100) : 0;
+                    
+                    return `<tr class="hover:bg-white/5 border-b border-white/5">
+                        <td class="px-2 py-3 text-center"><button onclick="showDetailRekap('${s.niup}')" class="px-3 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 rounded text-[10px] font-bold border border-emerald-500/20">Detail</button></td>
+                        <td class="px-4 py-3 font-bold text-slate-300 name-col sticky-col">${s.nama}</td>
+                        <td class="px-2 font-bold text-emerald-500">${summary.H}</td><td class="px-2 text-blue-400">${summary.S}</td><td class="px-2 text-amber-500">${summary.I}</td><td class="px-2 text-red-500">${summary.A}</td><td class="px-4 font-bold text-emerald-400">${percent}%</td>
+                    </tr>`;
+                }).join('');
+            } catch (e) { console.error(e); showNotification("Gagal memproses data", "error"); } finally { btn.innerHTML = originalHTML; lucide.createIcons(); }
+        }
+
+        // --- DETAIL & EDIT ABSENSI ---
+        function showDetailRekap(niup) {
+            currentDetailNiup = niup;
+            const s = appData.santri.find(x => String(x.niup) === String(niup));
+            if(!s) return;
+            document.getElementById('detail-santri-name').textContent = `${s.nama} (${s.niup})`;
+            
+            // Sync dropdowns with current filter
+            document.getElementById('detail-bulan').value = document.getElementById('rekap-bulan').value;
+            const thnSel = document.getElementById('detail-tahun');
+            thnSel.innerHTML = document.getElementById('rekap-tahun').innerHTML;
+            thnSel.value = document.getElementById('rekap-tahun').value;
+
+            document.getElementById('modal-detail-absen').classList.remove('hidden');
+            renderDetailTable();
+        }
+
+        function renderDetailTable() {
+            if(!currentDetailNiup) return;
+            const bln = parseInt(document.getElementById('detail-bulan').value);
+            const thn = parseInt(document.getElementById('detail-tahun').value);
+            const daysInMonth = new Date(thn, bln, 0).getDate();
+            const targetNiup = String(currentDetailNiup).trim();
+
+            const tbody = document.getElementById('detail-table-body');
+            let html = '';
+
+            for(let i=1; i<=daysInMonth; i++) {
+                const dateObj = new Date(thn, bln - 1, i);
+                const dateStr = dateObj.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' });
+                const isLiburWajib = (dateObj.getDay() === 1 || dateObj.getDay() === 4); // Mon & Thu
+
+                // Find existing record
+                const record = appData.absensi.find(a => {
+                    const d = parseSheetDate(a.timestamp || a.Tanggal);
+                    return d && String(a.niup).trim() === targetNiup && d.getDate() === i && (d.getMonth() + 1) === bln && d.getFullYear() === thn;
+                });
+                
+                const status = record ? (record.keterangan || record.KETERANGAN || '').toUpperCase() : '';
+
+                html += `<tr class="border-b border-white/5 hover:bg-white/5 ${isLiburWajib ? 'bg-amber-500/5' : ''}">
+                    <td class="px-6 py-3 font-mono text-xs text-slate-300">${i} - ${dateStr} ${isLiburWajib ? '<span class="text-amber-500 ml-2 font-bold text-[10px]">LIBUR</span>' : ''}</td>
+                    <td class="px-6 py-3 font-bold ${status==='H'?'text-emerald-500':status==='A'?'text-red-500':status==='I'?'text-amber-500':'text-blue-400'}">${status || '-'}</td>
+                    <td class="px-6 py-3 text-right">
+                        ${record ? 
+                        `<select onchange="updateAbsenStatus('${targetNiup}', '${dateObj.toISOString()}', this.value)" class="bg-slate-800 border border-white/10 rounded px-2 py-1 text-xs">
+                            <option value="H" ${status==='H'?'selected':''}>Hadir</option>
+                            <option value="S" ${status==='S'?'selected':''}>Sakit</option>
+                            <option value="I" ${status==='I'?'selected':''}>Izin</option>
+                            <option value="A" ${status==='A'?'selected':''}>Alfa</option>
+                         </select>` : 
+                         `<button onclick="submitAbsenManual('${targetNiup}', '${dateObj.toISOString()}')" class="text-xs text-emerald-500 hover:underline">Input Manual</button>`}
+                    </td>
+                </tr>`;
+            }
+            tbody.innerHTML = html;
+        }
+
+        async function updateAbsenStatus(niup, dateISO, newStatus) {
+            // NOTE: Since simple append scripts are hard to edit row-by-row without IDs, 
+            // We will treat this as a "Correction Entry" (latest entry counts in logic) OR send edit action if GAS supports.
+            // For this implementation, we will assume GAS handles 'editAbsen' OR we just append a new corrected row.
+            // Sending 'saveAbsen' again essentially updates it if the backend logic picks the latest timestamp.
+            
+            const s = appData.santri.find(x => String(x.niup) === String(niup));
+            const dateVal = new Date(dateISO);
+            
+            const payloadData = {
+                timestamp: new Date().toISOString(), // New timestamp for audit
+                tanggal: dateVal.toLocaleDateString('id-ID'), // Actual date being corrected
+                niup: s.niup, nama: s.nama, kamar: s.kamar, daerah: s.daerah, wilayah: s.wilayah,
+                pendidikan: s.pendidikan, majelis: s.majelis, kelompok: s.kelompok, niup_muallim: s.niup_muallim, muallim: s.muallim, 
+                keterangan: newStatus,
+                is_correction: true // Flag for backend
+            };
+
+            // Update Local Data (Find and Replace or Push)
+            // Ideally we find the index of the record for that specific date and update it locally
+            const recordIndex = appData.absensi.findIndex(a => {
+                const d = parseSheetDate(a.timestamp || a.Tanggal);
+                return d && String(a.niup).trim() === String(niup) && d.toDateString() === dateVal.toDateString();
+            });
+
+            if (recordIndex !== -1) {
+                appData.absensi[recordIndex].keterangan = newStatus;
+                appData.absensi[recordIndex].KETERANGAN = newStatus; // Handle both cases
+            } else {
+                appData.absensi.push(payloadData);
+            }
+
+            // Update UI
+            renderDetailTable();
+
+            // Send to Server
+            try {
+                await fetch(appData.settings.gasUrl, { method: 'POST', body: JSON.stringify({ action: 'saveAbsen', data: payloadData }) });
+                showNotification("Data diperbarui", "success");
+            } catch(e) { showNotification("Gagal update server", "error"); }
+        }
+        
+        async function submitAbsenManual(niup, dateISO) {
+             // Wrapper to reuse submit logic for detail view, defaulted to 'H'
+             const s = appData.santri.find(x => String(x.niup) === String(niup));
+             const dateVal = new Date(dateISO);
+             const payloadData = {
+                timestamp: new Date().toISOString(), tanggal: dateVal.toLocaleDateString('id-ID'),
+                niup: s.niup, nama: s.nama, kamar: s.kamar, daerah: s.daerah, wilayah: s.wilayah,
+                pendidikan: s.pendidikan, majelis: s.majelis, kelompok: s.kelompok, niup_muallim: s.niup_muallim, muallim: s.muallim, 
+                keterangan: 'H'
+            };
+            appData.absensi.push(payloadData);
+            renderDetailTable();
+            try {
+                await fetch(appData.settings.gasUrl, { method: 'POST', body: JSON.stringify({ action: 'saveAbsen', data: payloadData }) });
+                showNotification("Absen manual berhasil", "success");
+            } catch(e) { showNotification("Gagal kirim data", "error"); }
+        }
+
+        function filterMasterKelompok() { renderMasterKelompok(appData.masterKelompok.filter(m => (!document.getElementById('fmk-wilayah').value || m.wilayah === document.getElementById('fmk-wilayah').value) && (!document.getElementById('fmk-daerah').value || m.daerah === document.getElementById('fmk-daerah').value))); }
+        function renderMasterKelompok(data = appData.masterKelompok) {
+            document.getElementById('mk-table-body').innerHTML = data.map(m => `<tr class="hover:bg-white/5 border-b border-white/5"><td class="px-6 py-4"><span class="text-xs text-slate-500 block">${m.wilayah} / ${m.daerah}</span><span class="font-bold">${m.majelis}</span></td><td class="px-6 py-4 font-medium">${m.kelompok}</td><td class="px-6 py-4 text-xs"><span class="block text-emerald-500 font-bold">${m.muallim}</span><span class="text-slate-500">${m.niup_muallim}</span></td><td class="px-6 py-4 text-center"><button class="text-red-400 opacity-50"><i data-lucide="trash-2" class="w-4 h-4"></i></button></td></tr>`).join('');
+            document.getElementById('count-mk').textContent = `${data.length} Kelompok`; lucide.createIcons();
+        }
+        function renderMasterDomisili() {
+            document.getElementById('md-table-body').innerHTML = appData.masterDomisili.map(m => `<tr class="hover:bg-white/5 border-b border-white/5"><td class="px-6 py-4 font-bold text-slate-300">${m.wilayah}</td><td class="px-6 py-4">${m.daerah}</td><td class="px-6 py-4 font-mono text-emerald-500 font-bold">${m.kamar}</td><td class="px-6 py-4 text-center"><button class="text-red-400 opacity-50"><i data-lucide="trash-2" class="w-4 h-4"></i></button></td></tr>`).join('');
+            lucide.createIcons();
+        }
+        function renderLibur() {
+            const list = document.getElementById('list-libur-khusus');
+            if(list) list.innerHTML = appData.libur.map(l => `<div class="flex justify-between items-center p-3 bg-white/5 rounded-xl border border-white/5 transition-all hover:bg-white/10"><span class="text-sm font-medium">${l.tanggal}</span><span class="text-[10px] font-bold text-amber-500 uppercase tracking-widest">${l.keterangan || 'Event'}</span></div>`).join('');
+        }
+        function updateDashboard() {
+            if(document.getElementById('stat-total-santri')) document.getElementById('stat-total-santri').textContent = appData.santri.length;
+            if(document.getElementById('stat-total-kelompok')) document.getElementById('stat-total-kelompok').textContent = appData.masterKelompok.length;
+            const muallims = [...new Set(appData.masterKelompok.map(m => m.muallim))];
+            if(document.getElementById('stat-total-muallim')) document.getElementById('stat-total-muallim').textContent = muallims.length;
+            const todayStr = new Date().toLocaleDateString('id-ID');
+            const todayHadir = appData.absensi.filter(a => { const d = parseSheetDate(a.timestamp); return d && d.toLocaleDateString('id-ID') === todayStr && String(a.keterangan).toUpperCase() === 'H'; }).length;
+            if(document.getElementById('stat-kehadiran-today')) document.getElementById('stat-kehadiran-today').textContent = todayHadir;
+            const regions = {}; appData.santri.forEach(s => regions[s.wilayah] = (regions[s.wilayah] || 0) + 1);
+            if(donutChart) { donutChart.data.labels = Object.keys(regions); donutChart.data.datasets[0].data = Object.values(regions); donutChart.update(); }
+        }
+        
+        // --- FORM HANDLERS (Same as before) ---
+        function setupFormListeners() {
+            const wSel = document.getElementById('form-wilayah'); const dSel = document.getElementById('form-daerah'); const kSel = document.getElementById('form-kamar');
+            if(wSel) wSel.onchange = () => { const ds = [...new Set(appData.masterDomisili.filter(x => x.wilayah === wSel.value).map(x => x.daerah))]; dSel.innerHTML = ds.map(x => `<option value="${x}">${x}</option>`).join(''); dSel.onchange(); };
+            if(dSel) dSel.onchange = () => { const ks = [...new Set(appData.masterDomisili.filter(x => x.daerah === dSel.value).map(x => x.kamar))]; kSel.innerHTML = ks.map(x => `<option value="${x}">${x}</option>`).join(''); };
+            const mSel = document.getElementById('form-majelis'); const klpSel = document.getElementById('form-kelompok');
+            if(mSel) mSel.onchange = () => { const klps = appData.masterKelompok.filter(x => x.majelis === mSel.value); klpSel.innerHTML = klps.map(x => `<option value="${x.kelompok}" data-muallim="${x.muallim}" data-niup="${x.niup_muallim}">${x.kelompok}</option>`).join(''); klpSel.onchange(); };
+            if(klpSel) klpSel.onchange = () => { const opt = klpSel.options[klpSel.selectedIndex]; if(opt) { document.getElementById('form-muallim').value = opt.dataset.muallim; document.getElementById('form-niup-muallim').value = opt.dataset.niup; } };
+            document.getElementById('form-master-kelompok').onsubmit = (e) => { e.preventDefault(); saveMasterKelompok(); };
+            document.getElementById('form-master-domisili').onsubmit = (e) => { e.preventDefault(); saveMasterDomisili(); };
+        }
+        function populateYears() { const sel = document.getElementById('rekap-tahun'); const cy = new Date().getFullYear(); sel.innerHTML = ""; for(let i=cy; i>=2024; i--) sel.innerHTML += `<option value="${i}">${i}</option>`; }
+        async function postData(payload, btnId) { const btn = document.getElementById(btnId); const oc = btn.innerHTML; btn.innerHTML = `<div class="loader mx-auto"></div>`; btn.disabled = true; try { await fetch(appData.settings.gasUrl, { method: 'POST', body: JSON.stringify(payload) }); showNotification("Data tersimpan", "success"); await syncData(); } catch (e) { showNotification("Gagal", "error"); } finally { btn.innerHTML = oc; btn.disabled = false; } }
+        async function saveSantri() { const fd = new FormData(document.getElementById('form-santri')); await postData({ action: 'saveSantri', data: Object.fromEntries(fd.entries()) }, 'btn-save-santri'); closeModalSantri(); }
+        async function saveMasterKelompok() { await postData({ action: 'saveMasterKelompok', data: { wilayah: document.getElementById('mk-wilayah').value, daerah: document.getElementById('mk-daerah').value, majelis: document.getElementById('mk-majelis').value, kelompok: document.getElementById('mk-kelompok').value, niup_muallim: document.getElementById('mk-niup-muallim').value, muallim: document.getElementById('mk-muallim').value } }, 'btn-save-mk'); document.getElementById('form-master-kelompok').reset(); }
+        async function saveMasterDomisili() { await postData({ action: 'saveMasterDomisili', data: { wilayah: document.getElementById('md-wilayah').value, daerah: document.getElementById('md-daerah').value, kamar: document.getElementById('md-kamar').value } }, 'btn-save-md'); document.getElementById('form-master-domisili').reset(); }
+        async function addLiburKhusus() { await postData({ action: 'saveLibur', data: { tanggal: document.getElementById('input-libur-tgl').value, keterangan: 'Libur Khusus' } }, 'btn-libur'); }
+        function openModalSantri() { document.getElementById('modal-santri').classList.remove('hidden'); document.getElementById('form-santri').reset(); document.getElementById('form-id-row').value = ""; document.getElementById('modal-title').textContent = "Tambah Santri Baru"; }
+        function closeModalSantri() { document.getElementById('modal-santri').classList.add('hidden'); }
+        function editSantri(niup) { const s = appData.santri.find(x => String(x.niup) === String(niup)); if(!s) return; openModalSantri(); document.getElementById('modal-title').textContent = "Edit Data Santri"; const form = document.getElementById('form-santri'); for(let key in s) { if(form.elements[key]) form.elements[key].value = s[key]; } document.getElementById('form-wilayah').onchange(); document.getElementById('form-daerah').value = s.daerah; document.getElementById('form-daerah').onchange(); document.getElementById('form-kamar').value = s.kamar; document.getElementById('form-majelis').onchange(); document.getElementById('form-kelompok').value = s.kelompok; }
+        function showNotification(msg, type = "success") { const t = document.createElement('div'); t.className = `fixed bottom-8 right-8 px-6 py-4 rounded-2xl glass-card border-l-4 ${type === 'success' ? 'border-emerald-500' : 'border-red-500'} z-[200] modal-enter flex items-center gap-3`; t.innerHTML = `<i data-lucide="${type === 'success' ? 'check-circle' : 'alert-circle'}" class="w-5 h-5 ${type === 'success' ? 'text-emerald-500' : 'text-red-500'}"></i> <span class="font-bold text-sm text-slate-200">${msg}</span>`; document.body.appendChild(t); lucide.createIcons(); setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 500); }, 3000); }
+        function saveSettings() { const url = document.getElementById('cfg-gas-url').value.trim(); localStorage.setItem('gas_url', url); appData.settings.gasUrl = url; showNotification("Konfigurasi disimpan!", "success"); testConnection(); }
+        async function testConnection() { const btn = document.getElementById('btn-test'); btn.innerHTML = `<div class="loader"></div>`; try { const res = await fetch(`${appData.settings.gasUrl}?action=ping`); const data = await res.json(); if(data.status === 'success') { showNotification("Koneksi Berhasil!", "success"); syncData(); } } catch (e) { showNotification("Koneksi Gagal!", "error"); } finally { btn.innerHTML = `<i data-lucide="zap" class="w-5 h-5"></i>`; lucide.createIcons(); } }
+        let mainChart, donutChart;
+        function initCharts() {
+            const ctx1 = document.getElementById('mainChart'); if(ctx1) { mainChart = new Chart(ctx1.getContext('2d'), { type: 'line', data: { labels: ['W1','W2','W3','W4'], datasets: [{ label: 'Kehadiran %', data: [90, 95, 88, 92], borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 100, ticks: { color: '#64748b' } }, x: { grid: { display: false }, ticks: { color: '#64748b' } } } } }); }
+            const ctx2 = document.getElementById('donutChart'); if(ctx2) { donutChart = new Chart(ctx2.getContext('2d'), { type: 'doughnut', data: { labels: [], datasets: [{ data: [], backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899'], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', padding: 20 } } }, cutout: '70%' } }); }
+        }
+    </script>
+</body>
+</html>
