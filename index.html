@@ -148,7 +148,7 @@
             </div>
         </div>
         <h2 class="text-xl font-bold tracking-widest text-emerald-500 uppercase">Absensi Al-Qur'an</h2>
-        <p class="text-slate-400 mt-2 animate-pulse">Sinkronisasi Google Sheets...</p>
+        <p class="text-slate-400 mt-2 animate-pulse">Sinkronisasi Data...</p>
     </div>
 
     <!-- Sidebar Responsive -->
@@ -481,6 +481,14 @@
                         <div class="space-y-1.5">
                             <label class="text-[10px] font-bold text-slate-500 uppercase ml-1">Daerah</label>
                             <select id="fr-daerah" onchange="handleParentChildFilter('fr-daerah', null, 'fr-kamar', 'daerah'); fetchRekapData()" class="w-full px-3 py-2 rounded-xl text-sm"></select>
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] font-bold text-slate-500 uppercase ml-1">Kamar</label>
+                            <select id="fr-kamar" onchange="fetchRekapData()" class="w-full px-3 py-2 rounded-xl text-sm"></select>
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] font-bold text-slate-500 uppercase ml-1">Majelis</label>
+                            <select id="fr-majelis" onchange="handleParentChildFilter('fr-majelis', 'fr-kelompok', null, 'majelis'); fetchRekapData()" class="w-full px-3 py-2 rounded-xl text-sm"></select>
                         </div>
                         <div class="space-y-1.5">
                             <label class="text-[10px] font-bold text-slate-500 uppercase ml-1">Kelompok</label>
@@ -1099,8 +1107,13 @@
             const thn = parseInt(getVal('rekap-tahun'));
             if (isNaN(thn)) return; 
 
-            const wilayah = getVal('fr-wilayah'); const daerah = getVal('fr-daerah'); const kamar = getVal('fr-kamar');
-            const pendidikan = getVal('fr-pendidikan'); const majelis = getVal('fr-majelis'); const kelompok = getVal('fr-kelompok');
+            // Updated Filter Retrieval (Adding Kamar and Majelis)
+            const wilayah = getVal('fr-wilayah'); 
+            const daerah = getVal('fr-daerah'); 
+            const kamar = getVal('fr-kamar'); // Added
+            const pendidikan = getVal('fr-pendidikan'); 
+            const majelis = getVal('fr-majelis'); // Added
+            const kelompok = getVal('fr-kelompok');
 
             const btn = document.getElementById('btn-rekap'); const originalHTML = btn.innerHTML; btn.innerHTML = `<div class="loader"></div>`;
             try {
@@ -1119,8 +1132,13 @@
 
                 const filteredSantri = appData.santri.filter(s => {
                     const matchesSearch = !query || (s.nama.toLowerCase().includes(query) || String(s.niup).toLowerCase().includes(query));
-                    return matchesSearch && (!wilayah || s.wilayah === wilayah) && (!daerah || s.daerah === daerah) && (!kamar || s.kamar === kamar) &&
-                           (!pendidikan || s.pendidikan === pendidikan) && (!majelis || s.majelis === majelis) && (!kelompok || s.kelompok === kelompok);
+                    return matchesSearch && 
+                           (!wilayah || s.wilayah === wilayah) && 
+                           (!daerah || s.daerah === daerah) && 
+                           (!kamar || s.kamar === kamar) && // Added
+                           (!pendidikan || s.pendidikan === pendidikan) && 
+                           (!majelis || s.majelis === majelis) && // Added
+                           (!kelompok || s.kelompok === kelompok);
                 });
 
                 document.getElementById('count-rekap').textContent = `${filteredSantri.length} baris`;
@@ -1156,8 +1174,23 @@
                     let rowHTML = `<td class="px-4 py-3 font-bold text-slate-300 name-col sticky-col rekap-row">${s.nama}</td>`;
                     
                     for(let i=1; i<=daysInMonth; i++) {
-                        const stat = dailyStatus[i] || '-';
-                        const colorClass = stat === 'H' ? 'text-emerald-500' : stat === 'A' ? 'text-red-500' : stat === 'I' ? 'text-amber-500' : stat === 'S' ? 'text-blue-400' : 'text-slate-700';
+                        const dayOfWeek = new Date(thn, bln - 1, i).getDay();
+                        const isHoliday = dayOfWeek === 1 || dayOfWeek === 4; // Mon=1, Thu=4
+                        
+                        let stat = dailyStatus[i] || '-';
+                        
+                        // Override display for Holiday if no data
+                        if (!dailyStatus[i] && isHoliday) {
+                            stat = 'LR';
+                        }
+
+                        let colorClass = 'text-slate-700';
+                        if (stat === 'H') colorClass = 'text-emerald-500';
+                        else if (stat === 'A') colorClass = 'text-red-500';
+                        else if (stat === 'I') colorClass = 'text-amber-500';
+                        else if (stat === 'S') colorClass = 'text-blue-400';
+                        else if (stat === 'LR') colorClass = 'text-amber-600 font-bold bg-amber-500/10 rounded';
+
                         // Clicking cell opens detail
                         rowHTML += `<td class="text-center cursor-pointer hover:bg-white/10 ${colorClass}" onclick="showDetailRekap('${s.niup}')">${stat}</td>`;
                     }
@@ -1226,16 +1259,9 @@
                 
                 const isLiburWajib = (dateObj.getDay() === 1 || dateObj.getDay() === 4); 
 
-                // Find latest record for this specific day (Logic: Last Entry Wins)
                 const dayRecords = userMonthRecords.filter(a => parseSheetDate(a.timestamp || a.Tanggal).getDate() === i);
-                // Sort by timestamp (if available) to ensure we get the latest correction
-                dayRecords.sort((a,b) => {
-                    const tA = new Date(a.timestamp || 0).getTime();
-                    const tB = new Date(b.timestamp || 0).getTime();
-                    return tA - tB;
-                });
-                
                 const record = dayRecords.length > 0 ? dayRecords[dayRecords.length - 1] : null; 
+                
                 const status = record ? (record.keterangan || record.Keterangan || record.KETERANGAN || '').toUpperCase() : '';
 
                 // Generate Buttons for Status
@@ -1253,12 +1279,17 @@
                     return `<button onclick="updateAbsenStatus('${targetNiup}', '${dateISO}', '${btnLabel}')" class="${baseClass} ${stateClass}">${btnLabel}</button>`;
                 }).join('');
 
+                let contentHtml = '';
+                if(isLiburWajib) {
+                    contentHtml = `<div class="text-amber-500 font-bold text-xs bg-amber-500/10 px-3 py-1.5 rounded-lg border border-amber-500/20 inline-block w-full text-center">LIBUR RUTIN (LR)</div>`;
+                } else {
+                    contentHtml = `<div class="flex gap-2 justify-end">${buttonsHtml}</div>`;
+                }
+
                 html += `<tr class="border-b border-white/5 hover:bg-white/5 ${isLiburWajib ? 'bg-amber-500/5' : ''}">
-                    <td class="px-6 py-3 font-mono text-xs text-slate-300">${i} - ${dateStr} ${isLiburWajib ? '<span class="text-amber-500 ml-2 font-bold text-[10px]">LIBUR</span>' : ''}</td>
+                    <td class="px-6 py-3 font-mono text-xs text-slate-300">${i} - ${dateStr}</td>
                     <td class="px-6 py-3 text-right">
-                        <div class="flex gap-2 justify-end">
-                            ${buttonsHtml}
-                        </div>
+                        ${contentHtml}
                     </td>
                 </tr>`;
             }
