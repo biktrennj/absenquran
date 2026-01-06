@@ -682,6 +682,8 @@
             document.getElementById('cfg-gas-url').value = appData.settings.gasUrl;
             document.getElementById('absen-tgl-picker').value = new Date().toISOString().split('T')[0];
             initClock(); initCharts(); populateYears(); setupFormListeners();
+            // Sidebar resize listener
+            window.addEventListener('resize', () => { if(window.innerWidth <= 1024) document.getElementById('sidebar').classList.remove('collapsed'); });
             await syncData();
             const loader = document.getElementById('app-loader'); loader.style.opacity = '0'; setTimeout(() => loader.style.display = 'none', 500);
         };
@@ -706,6 +708,11 @@
                 appData.libur = result.libur || [];
                 appData.absensi = result.absensi || [];
                 renderAll(); updateConnectionUI(true);
+                
+                // Refresh specific tab data if active
+                if (!document.getElementById('tab-absensi').classList.contains('hidden')) loadAbsenList();
+                if (!document.getElementById('tab-rekap').classList.contains('hidden')) fetchRekapData();
+
             } catch (error) { console.error("Sync Error:", error); updateConnectionUI(false); }
         }
 
@@ -739,7 +746,12 @@
 
         function updateAbsenDateUI() {
             const picker = document.getElementById('absen-tgl-picker');
-            const dateVal = picker ? new Date(picker.value) : new Date();
+            let dateVal = new Date();
+            if (picker && picker.value) {
+                const parts = picker.value.split('-');
+                dateVal = new Date(parts[0], parts[1]-1, parts[2]);
+            }
+            
             const days = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
             const months = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
             
@@ -775,10 +787,13 @@
             if (!dateInput) return null;
             if (dateInput instanceof Date) return dateInput;
             const str = String(dateInput).trim();
+            // Handle ISO
             if (str.includes('T') && str.includes('Z')) { const d = new Date(str); if (!isNaN(d.getTime())) return d; }
+            // Handle slash or dash
             const parts = str.split(/[/-\s:]/);
             if (parts.length >= 3) {
                 let day, month, year;
+                // Assuming YYYY-MM-DD or DD/MM/YYYY
                 if (parts[0].length === 4) { year = parseInt(parts[0]); month = parseInt(parts[1]) - 1; day = parseInt(parts[2]); } 
                 else { day = parseInt(parts[0]); month = parseInt(parts[1]) - 1; year = parseInt(parts[2]); }
                 if (year < 100) year += 2000;
@@ -787,7 +802,22 @@
             const dFinal = new Date(str); return !isNaN(dFinal.getTime()) ? dFinal : null;
         }
 
+        // --- GLOBAL HELPER: SAFE VALUE GETTER ---
+        function getVal(id) {
+            const el = document.getElementById(id);
+            return el ? el.value : '';
+        }
+
         // --- FILTER & RENDER ---
+        function updateFormSelectors() {
+            const wilayahs = [...new Set(appData.masterDomisili.map(d => d.wilayah))];
+            const majelisList = [...new Set(appData.masterKelompok.map(k => k.majelis))];
+            const wSelect = document.getElementById('form-wilayah');
+            const mSelect = document.getElementById('form-majelis');
+            if(wSelect) wSelect.innerHTML = `<option value="">Pilih Wilayah</option>` + wilayahs.map(w => `<option value="${w}">${w}</option>`).join('');
+            if(mSelect) mSelect.innerHTML = `<option value="">Pilih Majelis</option>` + majelisList.map(m => `<option value="${m}">${m}</option>`).join('');
+        }
+
         function updateFilterSelectors() {
             const prefixes = ['fs', 'fa', 'fr', 'fmk'];
             const wilayahs = [...new Set(appData.masterDomisili.map(d => d.wilayah))];
@@ -803,7 +833,10 @@
         }
 
         function handleParentChildFilter(triggerId, childId, grandchildId, type) {
-            const triggerVal = document.getElementById(triggerId).value;
+            const triggerEl = document.getElementById(triggerId);
+            if (!triggerEl) return;
+            const triggerVal = triggerEl.value;
+            
             const childSel = childId ? document.getElementById(childId) : null;
             const gChildSel = grandchildId ? document.getElementById(grandchildId) : null;
 
@@ -812,7 +845,8 @@
                 if(childSel) childSel.innerHTML = `<option value="">Semua Daerah</option>` + daerahs.map(d => `<option value="${d}">${d}</option>`).join('');
                 if(gChildSel) gChildSel.innerHTML = `<option value="">Pilih Daerah dahulu</option>`;
             } else if (type === 'daerah') {
-                const triggerWilayah = document.getElementById(triggerId.replace('-daerah', '-wilayah')).value;
+                const wEl = document.getElementById(triggerId.replace('-daerah', '-wilayah'));
+                const triggerWilayah = wEl ? wEl.value : '';
                 const kamars = triggerVal ? [...new Set(appData.masterDomisili.filter(d => d.wilayah === triggerWilayah && d.daerah === triggerVal).map(d => d.kamar))] : [];
                 if(gChildSel) gChildSel.innerHTML = `<option value="">Semua Kamar</option>` + kamars.map(k => `<option value="${k}">${k}</option>`).join('');
             } else if (type === 'majelis') {
@@ -844,10 +878,11 @@
             lucide.createIcons();
         }
         function filterNoGroup() { document.getElementById('fs-search').value = ""; filterSantriTable(appData.santri.filter(s => !s.kelompok || s.kelompok === "")); }
+        
         function filterSantriTable(dataSet = null) {
-            const query = document.getElementById('fs-search').value.toLowerCase();
-            const wilayah = document.getElementById('fs-wilayah').value; const daerah = document.getElementById('fs-daerah').value; const kamar = document.getElementById('fs-kamar').value;
-            const pendidikan = document.getElementById('fs-pendidikan').value; const majelis = document.getElementById('fs-majelis').value; const kelompok = document.getElementById('fs-kelompok').value;
+            const query = getVal('fs-search').toLowerCase();
+            const wilayah = getVal('fs-wilayah'); const daerah = getVal('fs-daerah'); const kamar = getVal('fs-kamar');
+            const pendidikan = getVal('fs-pendidikan'); const majelis = getVal('fs-majelis'); const kelompok = getVal('fs-kelompok');
             
             const source = dataSet || appData.santri;
             const filtered = source.filter(s => {
@@ -858,26 +893,41 @@
             renderSantri(filtered);
         }
 
-        // --- ABSENSI (UPDATED) ---
+        // --- ABSENSI (UPDATED ROBUSTNESS) ---
         function loadAbsenList() {
-            const query = document.getElementById('fa-search').value.toLowerCase(); // Search Input
-            const picker = document.getElementById('absen-tgl-picker');
-            const selectedDateStr = picker ? picker.value : new Date().toISOString().split('T')[0];
-            const selectedDate = new Date(selectedDateStr);
+            const query = getVal('fa-search').toLowerCase();
+            const pickerVal = getVal('absen-tgl-picker');
+            
+            let selectedDate;
+            if (pickerVal) {
+                const pParts = pickerVal.split('-');
+                // Construct date using parts to avoid timezone shift
+                selectedDate = new Date(pParts[0], pParts[1]-1, pParts[2]);
+            } else {
+                selectedDate = new Date();
+                selectedDate.setHours(0,0,0,0);
+            }
 
-            // Get existing attendance for selected date
+            // Map attendance for efficient lookup
+            // Key: NIUP (string trimmed), Value: Keterangan
             const existingAbsenceMap = {};
             appData.absensi.forEach(a => {
                 const d = parseSheetDate(a.timestamp || a.Tanggal);
-                if (d && d.toDateString() === selectedDate.toDateString()) {
-                    existingAbsenceMap[String(a.niup).trim()] = a.keterangan;
+                if (d && d.getFullYear() === selectedDate.getFullYear() && 
+                    d.getMonth() === selectedDate.getMonth() && 
+                    d.getDate() === selectedDate.getDate()) {
+                    // Try to get NIUP from various common keys
+                    const niupKey = a.niup || a.NIUP || a.Niup;
+                    if(niupKey) {
+                        existingAbsenceMap[String(niupKey).trim()] = a.keterangan || a.Keterangan || a.KETERANGAN;
+                    }
                 }
             });
 
-            // Filter students
-            const wilayah = document.getElementById('fa-wilayah').value; const daerah = document.getElementById('fa-daerah').value;
-            const kamar = document.getElementById('fa-kamar').value; const pendidikan = document.getElementById('fa-pendidikan').value;
-            const majelis = document.getElementById('fa-majelis').value; const kelompok = document.getElementById('fa-kelompok').value;
+            // Filter logic (Safe Access)
+            const wilayah = getVal('fa-wilayah'); const daerah = getVal('fa-daerah');
+            const kamar = getVal('fa-kamar'); const pendidikan = getVal('fa-pendidikan');
+            const majelis = getVal('fa-majelis'); const kelompok = getVal('fa-kelompok');
             
             const list = appData.santri.filter(s => {
                 const matchesSearch = !query || (s.nama.toLowerCase().includes(query) || String(s.niup).toLowerCase().includes(query));
@@ -888,13 +938,17 @@
             const container = document.getElementById('absen-container');
             document.getElementById('count-absensi').textContent = `${list.length} Terdaftar`;
             
-            if(list.length === 0) { container.innerHTML = `<tr><td colspan="3" class="py-20 text-center opacity-40">Tidak ditemukan santri</td></tr>`; return; }
+            if(list.length === 0) { 
+                container.innerHTML = `<tr><td colspan="3" class="py-20 text-center opacity-40">Tidak ditemukan santri. Coba ubah filter atau sinkronisasi ulang.</td></tr>`; 
+                return; 
+            }
 
             container.innerHTML = list.map(s => {
-                const existingStatus = existingAbsenceMap[String(s.niup).trim()];
+                const statusRaw = existingAbsenceMap[String(s.niup).trim()] || '';
+                const existingStatus = statusRaw.toUpperCase();
                 
                 let actionHtml = '';
-                if (existingStatus) {
+                if (existingStatus && ['H','S','I','A'].includes(existingStatus)) {
                     const colorClass = existingStatus === 'H' ? 'text-emerald-500' : existingStatus === 'A' ? 'text-red-500' : 'text-blue-400';
                     actionHtml = `<div class="px-4 py-2 bg-white/5 rounded-xl border border-white/5 text-center font-bold ${colorClass}">Sudah Absen: ${existingStatus}</div>`;
                 } else {
@@ -918,9 +972,17 @@
 
         async function submitAbsen(niup, status, btnElement) {
             const s = appData.santri.find(x => String(x.niup) === String(niup));
-            const picker = document.getElementById('absen-tgl-picker');
-            const dateVal = picker ? new Date(picker.value) : new Date();
-            const now = new Date(); dateVal.setHours(now.getHours(), now.getMinutes()); // Keep time for sorting but correct date
+            const pickerVal = getVal('absen-tgl-picker');
+            
+            let dateVal;
+            if(pickerVal) {
+                const pParts = pickerVal.split('-');
+                dateVal = new Date(pParts[0], pParts[1]-1, pParts[2]);
+                const now = new Date();
+                dateVal.setHours(now.getHours(), now.getMinutes(), now.getSeconds());
+            } else {
+                dateVal = new Date();
+            }
 
             const payloadData = {
                 timestamp: dateVal.toISOString(), tanggal: dateVal.toLocaleDateString('id-ID'),
@@ -945,21 +1007,22 @@
             } catch (e) { showNotification("Gagal mencatat absen", "error"); loadAbsenList(); } // Revert if fail
         }
 
-        // --- REKAPITULASI (UPDATED) ---
+        // --- REKAPITULASI (UPDATED ROBUSTNESS) ---
         async function fetchRekapData(forceSync = false) {
-            const query = document.getElementById('fr-search').value.toLowerCase(); // Search Input
-            const bln = parseInt(document.getElementById('rekap-bulan').value);
-            const thn = parseInt(document.getElementById('rekap-tahun').value);
-            const wilayah = document.getElementById('fr-wilayah').value; const daerah = document.getElementById('fr-daerah').value; const kamar = document.getElementById('fr-kamar').value;
-            const pendidikan = document.getElementById('fr-pendidikan').value; const majelis = document.getElementById('fr-majelis').value; const kelompok = document.getElementById('fr-kelompok').value;
+            const query = getVal('fr-search').toLowerCase();
+            const bln = parseInt(getVal('rekap-bulan'));
+            const thn = parseInt(getVal('rekap-tahun'));
+            // Wait for tahun to populate if it's empty
+            if (isNaN(thn)) return; 
+
+            const wilayah = getVal('fr-wilayah'); const daerah = getVal('fr-daerah'); const kamar = getVal('fr-kamar');
+            const pendidikan = getVal('fr-pendidikan'); const majelis = getVal('fr-majelis'); const kelompok = getVal('fr-kelompok');
 
             const btn = document.getElementById('btn-rekap'); const originalHTML = btn.innerHTML; btn.innerHTML = `<div class="loader"></div>`;
             try {
                 if(forceSync) { await syncData(); showNotification("Database berhasil diperbarui", "success"); }
                 const headerRow = document.getElementById('rekap-header-row');
-                const datesInMonth = new Date(thn, bln, 0).getDate();
                 let dateHeadersHTML = `<th class="px-2 py-4 text-center">Aksi</th><th class="px-4 py-4 name-col sticky-col">Nama Santri</th>`;
-                // Only show Summary columns
                 dateHeadersHTML += `<th class="px-2 py-4 text-emerald-500">H</th><th class="px-2 py-4 text-blue-400">S</th><th class="px-2 py-4 text-amber-500">I</th><th class="px-2 py-4 text-red-500">A</th><th class="px-4 py-4 text-emerald-400">%</th>`;
                 headerRow.innerHTML = dateHeadersHTML;
 
@@ -970,17 +1033,37 @@
                 });
 
                 document.getElementById('count-rekap').textContent = `${filteredSantri.length} baris`;
+                
+                // Pre-filter absences for the entire selected month/year to improve performance
+                const relevantAbsences = appData.absensi.filter(a => {
+                    const d = parseSheetDate(a.timestamp || a.Tanggal);
+                    return d && d.getMonth() + 1 === bln && d.getFullYear() === thn;
+                });
+
                 document.getElementById('rekap-table-body').innerHTML = filteredSantri.map(s => {
                     let summary = { H: 0, S: 0, I: 0, A: 0 };
                     const targetNiup = String(s.niup).trim();
-                    const sAbsen = appData.absensi.filter(a => {
-                        const d = parseSheetDate(a.timestamp || a.Tanggal); 
-                        return d && String(a.niup).trim() === targetNiup && (d.getMonth() + 1) === bln && d.getFullYear() === thn;
+                    
+                    // Filter specifically for this santri from pre-filtered list
+                    const sAbsen = relevantAbsences.filter(a => {
+                        const niupKey = a.niup || a.NIUP || a.Niup;
+                        return niupKey && String(niupKey).trim() === targetNiup;
                     });
+
+                    // De-duplicate: Keep only latest entry per day
+                    const uniqueDays = {};
                     sAbsen.forEach(a => {
-                        const ket = String(a.keterangan || a.KETERANGAN || '').trim().toUpperCase();
-                        if (summary[ket] !== undefined) summary[ket]++;
+                        const d = parseSheetDate(a.timestamp || a.Tanggal);
+                        const dayKey = d.getDate();
+                        const ket = (a.keterangan || a.Keterangan || a.KETERANGAN || '').toUpperCase();
+                        uniqueDays[dayKey] = ket;
                     });
+
+                    // Count
+                    Object.values(uniqueDays).forEach(status => {
+                        if (summary[status] !== undefined) summary[status]++;
+                    });
+
                     const totalEntries = summary.H + summary.S + summary.I + summary.A;
                     const percent = totalEntries > 0 ? Math.round((summary.H / totalEntries) * 100) : 0;
                     
@@ -1001,10 +1084,16 @@
             document.getElementById('detail-santri-name').textContent = `${s.nama} (${s.niup})`;
             
             // Sync dropdowns with current filter
-            document.getElementById('detail-bulan').value = document.getElementById('rekap-bulan').value;
+            const rekapBulanEl = document.getElementById('rekap-bulan');
+            const rekapTahunEl = document.getElementById('rekap-tahun');
+            
+            if(rekapBulanEl) document.getElementById('detail-bulan').value = rekapBulanEl.value;
+            
             const thnSel = document.getElementById('detail-tahun');
-            thnSel.innerHTML = document.getElementById('rekap-tahun').innerHTML;
-            thnSel.value = document.getElementById('rekap-tahun').value;
+            if(rekapTahunEl) {
+                thnSel.innerHTML = rekapTahunEl.innerHTML;
+                thnSel.value = rekapTahunEl.value;
+            }
 
             document.getElementById('modal-detail-absen').classList.remove('hidden');
             renderDetailTable();
@@ -1012,26 +1101,33 @@
 
         function renderDetailTable() {
             if(!currentDetailNiup) return;
-            const bln = parseInt(document.getElementById('detail-bulan').value);
-            const thn = parseInt(document.getElementById('detail-tahun').value);
+            const bln = parseInt(getVal('detail-bulan'));
+            const thn = parseInt(getVal('detail-tahun'));
+            if(isNaN(bln) || isNaN(thn)) return;
+
             const daysInMonth = new Date(thn, bln, 0).getDate();
             const targetNiup = String(currentDetailNiup).trim();
 
             const tbody = document.getElementById('detail-table-body');
             let html = '';
 
+            // Get all records for this user/month
+            const userMonthRecords = appData.absensi.filter(a => {
+                const d = parseSheetDate(a.timestamp || a.Tanggal);
+                const niupKey = a.niup || a.NIUP || a.Niup;
+                return d && niupKey && String(niupKey).trim() === targetNiup && d.getMonth() + 1 === bln && d.getFullYear() === thn;
+            });
+
             for(let i=1; i<=daysInMonth; i++) {
                 const dateObj = new Date(thn, bln - 1, i);
                 const dateStr = dateObj.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' });
                 const isLiburWajib = (dateObj.getDay() === 1 || dateObj.getDay() === 4); // Mon & Thu
 
-                // Find existing record
-                const record = appData.absensi.find(a => {
-                    const d = parseSheetDate(a.timestamp || a.Tanggal);
-                    return d && String(a.niup).trim() === targetNiup && d.getDate() === i && (d.getMonth() + 1) === bln && d.getFullYear() === thn;
-                });
+                // Find latest record for this specific day
+                const dayRecords = userMonthRecords.filter(a => parseSheetDate(a.timestamp || a.Tanggal).getDate() === i);
+                const record = dayRecords.length > 0 ? dayRecords[dayRecords.length - 1] : null; // Take last one
                 
-                const status = record ? (record.keterangan || record.KETERANGAN || '').toUpperCase() : '';
+                const status = record ? (record.keterangan || record.Keterangan || record.KETERANGAN || '').toUpperCase() : '';
 
                 html += `<tr class="border-b border-white/5 hover:bg-white/5 ${isLiburWajib ? 'bg-amber-500/5' : ''}">
                     <td class="px-6 py-3 font-mono text-xs text-slate-300">${i} - ${dateStr} ${isLiburWajib ? '<span class="text-amber-500 ml-2 font-bold text-[10px]">LIBUR</span>' : ''}</td>
@@ -1052,11 +1148,6 @@
         }
 
         async function updateAbsenStatus(niup, dateISO, newStatus) {
-            // NOTE: Since simple append scripts are hard to edit row-by-row without IDs, 
-            // We will treat this as a "Correction Entry" (latest entry counts in logic) OR send edit action if GAS supports.
-            // For this implementation, we will assume GAS handles 'editAbsen' OR we just append a new corrected row.
-            // Sending 'saveAbsen' again essentially updates it if the backend logic picks the latest timestamp.
-            
             const s = appData.santri.find(x => String(x.niup) === String(niup));
             const dateVal = new Date(dateISO);
             
@@ -1069,19 +1160,8 @@
                 is_correction: true // Flag for backend
             };
 
-            // Update Local Data (Find and Replace or Push)
-            // Ideally we find the index of the record for that specific date and update it locally
-            const recordIndex = appData.absensi.findIndex(a => {
-                const d = parseSheetDate(a.timestamp || a.Tanggal);
-                return d && String(a.niup).trim() === String(niup) && d.toDateString() === dateVal.toDateString();
-            });
-
-            if (recordIndex !== -1) {
-                appData.absensi[recordIndex].keterangan = newStatus;
-                appData.absensi[recordIndex].KETERANGAN = newStatus; // Handle both cases
-            } else {
-                appData.absensi.push(payloadData);
-            }
+            // Update Local Data (Push new correction)
+            appData.absensi.push(payloadData);
 
             // Update UI
             renderDetailTable();
@@ -1111,7 +1191,9 @@
             } catch(e) { showNotification("Gagal kirim data", "error"); }
         }
 
-        function filterMasterKelompok() { renderMasterKelompok(appData.masterKelompok.filter(m => (!document.getElementById('fmk-wilayah').value || m.wilayah === document.getElementById('fmk-wilayah').value) && (!document.getElementById('fmk-daerah').value || m.daerah === document.getElementById('fmk-daerah').value))); }
+        function filterMasterKelompok() { 
+            renderMasterKelompok(appData.masterKelompok.filter(m => (!getVal('fmk-wilayah') || m.wilayah === getVal('fmk-wilayah')) && (!getVal('fmk-daerah') || m.daerah === getVal('fmk-daerah')))); 
+        }
         function renderMasterKelompok(data = appData.masterKelompok) {
             document.getElementById('mk-table-body').innerHTML = data.map(m => `<tr class="hover:bg-white/5 border-b border-white/5"><td class="px-6 py-4"><span class="text-xs text-slate-500 block">${m.wilayah} / ${m.daerah}</span><span class="font-bold">${m.majelis}</span></td><td class="px-6 py-4 font-medium">${m.kelompok}</td><td class="px-6 py-4 text-xs"><span class="block text-emerald-500 font-bold">${m.muallim}</span><span class="text-slate-500">${m.niup_muallim}</span></td><td class="px-6 py-4 text-center"><button class="text-red-400 opacity-50"><i data-lucide="trash-2" class="w-4 h-4"></i></button></td></tr>`).join('');
             document.getElementById('count-mk').textContent = `${data.length} Kelompok`; lucide.createIcons();
@@ -1133,7 +1215,7 @@
             const todayHadir = appData.absensi.filter(a => { const d = parseSheetDate(a.timestamp); return d && d.toLocaleDateString('id-ID') === todayStr && String(a.keterangan).toUpperCase() === 'H'; }).length;
             if(document.getElementById('stat-kehadiran-today')) document.getElementById('stat-kehadiran-today').textContent = todayHadir;
             const regions = {}; appData.santri.forEach(s => regions[s.wilayah] = (regions[s.wilayah] || 0) + 1);
-            if(donutChart) { donutChart.data.labels = Object.keys(regions); donutChart.data.datasets[0].data = Object.values(regions); donutChart.update(); }
+            if(donutChart && donutChart.data) { donutChart.data.labels = Object.keys(regions); donutChart.data.datasets[0].data = Object.values(regions); donutChart.update(); }
         }
         
         // --- FORM HANDLERS (Same as before) ---
